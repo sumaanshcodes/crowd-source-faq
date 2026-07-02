@@ -41,6 +41,12 @@ interface ResolvedQuery {
   resolvedBy: string;
 }
 
+interface SavedFaq {
+  question: string;
+  answer: string;
+  category: string;
+}
+
 // LocalStorage State (Clean slate)
 let users: User[] = JSON.parse(localStorage.getItem('faq_users_v2') || '[]');
 
@@ -49,6 +55,29 @@ let admins: Admin[] = JSON.parse(localStorage.getItem('faq_admins_v2') || '[]');
 let unresolvedQueries: Query[] = JSON.parse(localStorage.getItem('faq_queries_v2') || '[]');
 
 let resolvedQueries: ResolvedQuery[] = JSON.parse(localStorage.getItem('faq_resolved_v2') || '[]');
+
+function getSavedFaqs(): SavedFaq[] {
+  return JSON.parse(localStorage.getItem('faq_saved_v2') || '[]');
+}
+
+function setSavedFaqs(faqs: SavedFaq[]) {
+  localStorage.setItem('faq_saved_v2', JSON.stringify(faqs));
+}
+
+function isFaqSaved(question: string): boolean {
+  return getSavedFaqs().some(f => f.question === question);
+}
+
+function toggleSavedFaq(question: string, answer: string, category: string) {
+  let saved = getSavedFaqs();
+  const idx = saved.findIndex(f => f.question === question);
+  if (idx !== -1) {
+    saved.splice(idx, 1);
+  } else {
+    saved.push({ question, answer, category });
+  }
+  setSavedFaqs(saved);
+}
 
 function saveState() {
   localStorage.setItem('faq_users_v2', JSON.stringify(users));
@@ -286,6 +315,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.createElement('button');
         btn.className = 'faq-question';
         btn.innerHTML = `<span>${questionText}</span> <span class="faq-icon">▼</span>`;
+
+        // Bookmark icon (visible on hover)
+        const bookmarkBtn = document.createElement('button');
+        bookmarkBtn.className = 'faq-bookmark-icon' + (isFaqSaved(qObj.q) ? ' bookmarked' : '');
+        bookmarkBtn.title = isFaqSaved(qObj.q) ? 'Remove Bookmark' : 'Bookmark this FAQ';
+        bookmarkBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${isFaqSaved(qObj.q) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+        bookmarkBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleSavedFaq(qObj.q, qObj.a, cat.category);
+          const saved = isFaqSaved(qObj.q);
+          bookmarkBtn.classList.toggle('bookmarked', saved);
+          bookmarkBtn.title = saved ? 'Remove Bookmark' : 'Bookmark this FAQ';
+          bookmarkBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${saved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+        });
         
         const ansDiv = document.createElement('div');
         ansDiv.className = 'faq-answer';
@@ -301,6 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         itemDiv.appendChild(btn);
+        itemDiv.appendChild(bookmarkBtn);
         itemDiv.appendChild(ansDiv);
         catDiv.appendChild(itemDiv);
       });
@@ -337,6 +381,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial Render
   renderFaqs();
+
+  // Saved FAQs Toggle & Rendering
+  const savedFaqToggle = document.getElementById('saved-faq-toggle');
+  const savedFaqsOverlay = document.getElementById('saved-faqs-overlay');
+  const savedFaqsContainer = document.getElementById('saved-faqs-container');
+  const closeSavedFaqs = document.getElementById('close-saved-faqs');
+
+  function renderSavedFaqs() {
+    if (!savedFaqsContainer) return;
+    const saved = getSavedFaqs();
+    savedFaqsContainer.innerHTML = '';
+    
+    if (saved.length === 0) {
+      savedFaqsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 2rem 0;">You haven\'t saved any FAQs yet. Hover over a FAQ and click the 🔖 bookmark icon to save it here!</p>';
+      return;
+    }
+
+    saved.forEach((faq) => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'faq-item';
+
+      const btn = document.createElement('button');
+      btn.className = 'faq-question';
+      btn.innerHTML = `<span>${faq.question}</span> <span class="faq-icon">▼</span>`;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-bookmark-btn';
+      removeBtn.title = 'Remove from Saved';
+      removeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="var(--color-1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSavedFaq(faq.question, faq.answer, faq.category);
+        renderSavedFaqs();
+        renderFaqs(); // refresh bookmark icons in main list
+      });
+
+      const ansDiv = document.createElement('div');
+      ansDiv.className = 'faq-answer';
+      ansDiv.innerHTML = `<div class="faq-answer-inner"><p style="font-size: 0.75rem; opacity: 0.6; margin-bottom: 0.5rem;">Category: ${faq.category}</p>${faq.answer}</div>`;
+
+      btn.addEventListener('click', () => {
+        itemDiv.classList.toggle('active');
+      });
+
+      itemDiv.appendChild(btn);
+      itemDiv.appendChild(removeBtn);
+      itemDiv.appendChild(ansDiv);
+      savedFaqsContainer.appendChild(itemDiv);
+    });
+  }
+
+  if (savedFaqToggle) {
+    savedFaqToggle.addEventListener('click', () => {
+      if (savedFaqsOverlay) {
+        const isVisible = savedFaqsOverlay.style.display !== 'none';
+        savedFaqsOverlay.style.display = isVisible ? 'none' : 'block';
+        if (!isVisible) renderSavedFaqs();
+      }
+    });
+  }
+
+  if (closeSavedFaqs) {
+    closeSavedFaqs.addEventListener('click', () => {
+      if (savedFaqsOverlay) savedFaqsOverlay.style.display = 'none';
+    });
+  }
 
   // Search Logic
   function doSearch() {

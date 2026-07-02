@@ -1009,3 +1009,140 @@ body {
 .query-tab-content.active {
   display: block;
 }
+
+/* ===== Bookmark / Saved FAQ Feature ===== */
+
+/* Heading Row: title left, bookmark icon right */
+.faq-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* The main bookmark button in the heading */
+.saved-faq-btn {
+  position: relative;
+  background: none;
+  border: 2px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.45rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.saved-faq-btn:hover {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  transform: scale(1.1);
+}
+
+/* Tooltip on hover */
+.saved-faq-tooltip {
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent-primary);
+  color: white;
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.saved-faq-btn:hover .saved-faq-tooltip {
+  opacity: 1;
+}
+
+/* Inline bookmark icon on each FAQ item (hidden by default) */
+.faq-bookmark-icon {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  margin-left: auto;
+  opacity: 0;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.faq-item:hover .faq-bookmark-icon {
+  opacity: 1;
+}
+
+.faq-bookmark-icon:hover {
+  color: var(--accent-primary);
+  transform: scale(1.2);
+}
+
+.faq-bookmark-icon.bookmarked {
+  opacity: 1;
+  color: var(--accent-primary);
+}
+
+.faq-bookmark-icon.bookmarked svg {
+  fill: var(--accent-primary);
+}
+
+/* Ensure the question row accommodates the bookmark */
+.faq-question {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Saved FAQs Overlay */
+.saved-faqs-overlay {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--card-shadow);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.saved-faqs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.saved-faqs-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+/* Remove bookmark button inside saved view */
+.remove-bookmark-btn {
+  background: none;
+  border: none;
+  color: var(--color-1);
+  cursor: pointer;
+  padding: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  transition: all 0.25s ease;
+}
+
+.remove-bookmark-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}

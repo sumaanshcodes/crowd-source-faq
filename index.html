@@ -171,8 +171,26 @@
 
         <!-- FAQ Section -->
         <section id="faq" class="content-section">
-          <h2>Frequently Asked Questions</h2>
+          <div class="faq-heading-row">
+            <h2>Frequently Asked Questions</h2>
+            <button id="saved-faq-toggle" class="saved-faq-btn" title="Saved FAQs">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              <span class="saved-faq-tooltip">Saved FAQs</span>
+            </button>
+          </div>
           <p class="subtitle">FAQ regarding every doubt you have or you can think of</p>
+          
+          <!-- Saved FAQs Overlay -->
+          <div id="saved-faqs-overlay" class="saved-faqs-overlay" style="display: none;">
+            <div class="saved-faqs-header">
+              <h3>🔖 Your Saved FAQs</h3>
+              <button id="close-saved-faqs" class="btn btn-small" style="background: var(--accent-primary); color: white;">✕ Close</button>
+            </div>
+            <div id="saved-faqs-container" class="faq-container">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
           <div class="faq-container" id="faq-container">
             <!-- Dynamically populated by JS -->
           </div>
