@@ -86,6 +86,39 @@ function saveState() {
   localStorage.setItem('faq_resolved_v2', JSON.stringify(resolvedQueries));
 }
 
+// Admin-added FAQs (persisted separately so they survive page refresh)
+interface AdminAddedFaq {
+  question: string;
+  answer: string;
+  categoryIndex: number;
+  addedBy: string;
+  addedDate: string;
+  askerEmail: string;
+}
+
+function getAdminAddedFaqs(): AdminAddedFaq[] {
+  return JSON.parse(localStorage.getItem('faq_admin_added_v2') || '[]');
+}
+
+function setAdminAddedFaqs(faqs: AdminAddedFaq[]) {
+  localStorage.setItem('faq_admin_added_v2', JSON.stringify(faqs));
+}
+
+// Merge admin-added FAQs into faqData on load
+function mergeAdminFaqsIntoData() {
+  const adminFaqs = getAdminAddedFaqs();
+  adminFaqs.forEach(af => {
+    if (faqData[af.categoryIndex]) {
+      // Avoid duplicates
+      const exists = faqData[af.categoryIndex].questions.some(q => q.q === af.question);
+      if (!exists) {
+        faqData[af.categoryIndex].questions.push({ q: af.question, a: af.answer });
+      }
+    }
+  });
+}
+mergeAdminFaqsIntoData();
+
 const ADMIN_SECURITY_KEY = 'vins2026';
 let currentUserEmail = null;
 let currentUserName = null;
@@ -202,8 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
       navLinks.forEach(l => l.classList.remove('active'));
       link.classList.add('active');
       const targetId = link.getAttribute('data-target');
-      if (targetId === 'faq' && !currentUserEmail) {
-        alert("Please sign in to access FAQs.");
+      if (targetId === 'faq' && !currentUserEmail && !currentAdminEmail) {
+        alert("Please sign in as a student or admin to access FAQs.");
         loginModal.classList.add('active');
         return;
       }
@@ -450,11 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Search Logic
   function doSearch() {
-    if (!currentUserEmail) {
-      alert("Please sign in to search or view FAQs.");
-      loginModal.classList.add('active');
-      return;
-    }
     const term = faqSearchInput.value.trim();
     document.querySelector('[data-target="faq"]').click();
     renderFaqs(term);
@@ -699,6 +727,74 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderCommunityQueries() {
     communityQueriesContainer.innerHTML = '';
     
+    const isAdmin = !!currentAdminEmail;
+    
+    // Admin sees ALL queries (both unresolved and resolved); students see only others' unresolved
+    if (isAdmin) {
+      // Show unresolved queries
+      const allUnresolved = unresolvedQueries;
+      if (allUnresolved.length > 0) {
+        const unresolvedTitle = document.createElement('h3');
+        unresolvedTitle.className = 'color-heading-2 mb-1';
+        unresolvedTitle.textContent = `Open Queries (${allUnresolved.length})`;
+        communityQueriesContainer.appendChild(unresolvedTitle);
+        
+        allUnresolved.forEach(q => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'faq-item';
+          const btn = document.createElement('button');
+          btn.className = 'faq-question';
+          btn.innerHTML = `<span>${q.term}</span> <span class="faq-icon">▼</span>`;
+          const ansDiv = document.createElement('div');
+          ansDiv.className = 'faq-answer';
+          let details = `<p style="font-size: 0.85rem;"><strong>Asked by:</strong> ${q.userName || 'Unknown'} (${q.userEmail})</p>`;
+          details += `<p style="font-size: 0.85rem;"><strong>Date:</strong> ${q.date} at ${q.time || '-'}</p>`;
+          if (q.proposedAnswer) {
+            details += `<p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--accent-secondary);"><strong>💡 Proposed Answer by ${q.proposedBy}:</strong> ${q.proposedAnswer}</p>`;
+          } else {
+            details += `<p style="font-size: 0.85rem; margin-top: 0.5rem; opacity: 0.6;"><em>No proposed answer yet.</em></p>`;
+          }
+          ansDiv.innerHTML = `<div class="faq-answer-inner">${details}</div>`;
+          btn.addEventListener('click', () => itemDiv.classList.toggle('active'));
+          itemDiv.appendChild(btn);
+          itemDiv.appendChild(ansDiv);
+          communityQueriesContainer.appendChild(itemDiv);
+        });
+      }
+      
+      // Show resolved queries
+      if (resolvedQueries.length > 0) {
+        const resolvedTitle = document.createElement('h3');
+        resolvedTitle.className = 'color-heading-3 mt-2 mb-1';
+        resolvedTitle.textContent = `Resolved Queries (${resolvedQueries.length})`;
+        communityQueriesContainer.appendChild(resolvedTitle);
+        
+        resolvedQueries.forEach(q => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'faq-item';
+          const btn = document.createElement('button');
+          btn.className = 'faq-question';
+          btn.innerHTML = `<span>${q.term}</span> <span class="faq-icon">▼</span>`;
+          const ansDiv = document.createElement('div');
+          ansDiv.className = 'faq-answer';
+          let details = `<p style="font-size: 0.85rem;"><strong>Asked by:</strong> ${q.userName || 'Unknown'} (${q.userEmail})</p>`;
+          details += `<p style="font-size: 0.85rem;"><strong>Answer:</strong> ${q.answer}</p>`;
+          details += `<p style="font-size: 0.85rem; opacity: 0.7;"><strong>Resolved by:</strong> ${q.resolvedBy}</p>`;
+          ansDiv.innerHTML = `<div class="faq-answer-inner">${details}</div>`;
+          btn.addEventListener('click', () => itemDiv.classList.toggle('active'));
+          itemDiv.appendChild(btn);
+          itemDiv.appendChild(ansDiv);
+          communityQueriesContainer.appendChild(itemDiv);
+        });
+      }
+      
+      if (allUnresolved.length === 0 && resolvedQueries.length === 0) {
+        communityQueriesContainer.innerHTML = '<p>No community activity yet.</p>';
+      }
+      return;
+    }
+    
+    // Student view: only others' unresolved queries without proposed answers
     const communityQueries = unresolvedQueries.filter(q => q.userEmail !== currentUserEmail && !q.proposedAnswer);
     
     if (communityQueries.length === 0) {
@@ -723,7 +819,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const infoP = document.createElement('p');
       infoP.style.fontSize = '0.9rem';
       infoP.style.marginBottom = '0.5rem';
-      infoP.textContent = `Asked by: ${q.userName || 'A Student'}`;
+      infoP.style.fontStyle = 'italic';
+      infoP.style.opacity = '0.8';
+      infoP.textContent = 'Asked anonymously by a student';
       
       const textarea = document.createElement('textarea');
       textarea.rows = 3;
@@ -919,13 +1017,22 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSpHistory();
     renderLeaderboard();
 
-    // Switch back to Home page
-    document.querySelector('[data-target="home"]').click();
+    // Save session to localStorage
+    localStorage.setItem('faq_session_email', email);
+    localStorage.setItem('faq_session_lastActive', Date.now().toString());
   }
 
   logoutBtn.addEventListener('click', () => {
+    performLogout();
+  });
+
+  function performLogout() {
     currentUserEmail = null;
     currentUserName = null;
+    
+    // Clear session
+    localStorage.removeItem('faq_session_email');
+    localStorage.removeItem('faq_session_lastActive');
     
     authSection.style.display = 'flex';
     userProfile.style.display = 'none';
@@ -953,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Clear sign in form
     signinForm.reset();
-  });
+  }
 
   signupForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1000,10 +1107,54 @@ document.addEventListener('DOMContentLoaded', () => {
   // Resolve Modal Elements
   const resolveModal = document.getElementById('resolve-modal');
   const resolveQueryText = document.getElementById('resolve-query-text');
-  const resolveAnswerInput = document.getElementById('resolve-answer-input');
+  const resolveAnswerInput = document.getElementById('resolve-answer-input') as HTMLTextAreaElement;
   const resolveSubmitBtn = document.getElementById('resolve-submit-btn');
   const resolveCancelBtn = document.getElementById('resolve-cancel-btn');
+  const creditProposerContainer = document.getElementById('credit-proposer-container');
+  const creditProposerCheckbox = document.getElementById('credit-proposer-checkbox') as HTMLInputElement;
+  const proposerNameDisplay = document.getElementById('proposer-name-display');
+  
   let currentResolveIndex = null;
+  let currentOriginalProposedAnswer = '';
+  let currentProposerEmail = '';
+
+  if (resolveAnswerInput) {
+    resolveAnswerInput.addEventListener('input', () => {
+      if (currentProposerEmail && creditProposerContainer) {
+        if (resolveAnswerInput.value.trim() !== currentOriginalProposedAnswer) {
+          creditProposerContainer.style.display = 'block';
+        } else {
+          creditProposerContainer.style.display = 'none';
+        }
+      }
+    });
+  }
+
+  // Add to FAQ elements
+  const addToFaqCheckbox = document.getElementById('add-to-faq-checkbox') as HTMLInputElement;
+  const addToFaqOptions = document.getElementById('add-to-faq-options');
+  const faqCategorySelect = document.getElementById('faq-category-select') as HTMLSelectElement;
+  const faqReframeInput = document.getElementById('faq-reframe-input') as HTMLInputElement;
+
+  // Toggle the FAQ options panel when checkbox is toggled
+  if (addToFaqCheckbox && addToFaqOptions) {
+    addToFaqCheckbox.addEventListener('change', () => {
+      addToFaqOptions.style.display = addToFaqCheckbox.checked ? 'block' : 'none';
+    });
+  }
+
+  // Populate category dropdown from faqData
+  function populateFaqCategoryDropdown() {
+    if (!faqCategorySelect) return;
+    faqCategorySelect.innerHTML = '';
+    faqData.forEach((cat, i) => {
+      const opt = document.createElement('option');
+      opt.value = i.toString();
+      opt.textContent = cat.category;
+      faqCategorySelect.appendChild(opt);
+    });
+  }
+  populateFaqCategoryDropdown();
   
   function renderLongText(text) {
     if (!text) return '-';
@@ -1020,17 +1171,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderAdminUsersTable() {
     adminUsersTableBody.innerHTML = '';
-    users.forEach(u => {
+    users.forEach((u, uIndex) => {
       const tr = document.createElement('tr');
       const badgeClass = u.status === 'Active' ? 'status-active' : '';
       tr.innerHTML = `
         <td>${u.name || 'Unknown'}</td>
         <td>${u.email}</td>
         <td>${u.sp !== undefined ? u.sp : 0} SP</td>
+        <td></td>
         <td><span class="status-badge ${badgeClass}">${u.status}</span></td>
         <td>${u.date}</td>
         <td>${u.lastSignIn || 'Never'}</td>
       `;
+      
+      // Add Manage SP button in the 4th column
+      const spTd = tr.querySelectorAll('td')[3];
+      const editSpBtn = document.createElement('button');
+      editSpBtn.className = 'btn primary-btn';
+      editSpBtn.style.cssText = 'padding: 0.3rem 0.6rem; font-size: 0.8rem;';
+      editSpBtn.textContent = '✏️ Edit';
+      editSpBtn.addEventListener('click', () => {
+        openSpEditModal(uIndex);
+      });
+      spTd.appendChild(editSpBtn);
+      
       adminUsersTableBody.appendChild(tr);
     });
     
@@ -1054,12 +1218,29 @@ document.addEventListener('DOMContentLoaded', () => {
       resolveBtn.textContent = 'Resolve';
       resolveBtn.onclick = () => {
         currentResolveIndex = index;
+        currentProposerEmail = q.proposedBy || '';
+        currentOriginalProposedAnswer = q.proposedAnswer || '';
+        
         let queryDetails = `Question: "${q.term}" (Asked by ${q.userName || q.userEmail})`;
         if (q.proposedAnswer) {
           queryDetails += `<br><br><span style="color: var(--accent-secondary);">💡 A solution has been proposed by ${q.proposedBy}! Please review it below.</span>`;
+          if (proposerNameDisplay) proposerNameDisplay.textContent = q.proposedBy;
         }
+        
         resolveQueryText.innerHTML = queryDetails;
         resolveAnswerInput.value = q.proposedAnswer || '';
+        
+        if (creditProposerContainer) {
+          creditProposerContainer.style.display = 'none'; // hidden by default, shown if modified
+        }
+        if (creditProposerCheckbox) {
+          creditProposerCheckbox.checked = true; // default to giving credit if modified
+        }
+
+        // Reset FAQ promotion section
+        if (addToFaqCheckbox) addToFaqCheckbox.checked = false;
+        if (addToFaqOptions) addToFaqOptions.style.display = 'none';
+        if (faqReframeInput) faqReframeInput.value = '';
         resolveModal.classList.add('active');
       };
       
@@ -1094,6 +1275,170 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       adminResolvedTableBody.appendChild(tr);
     });
+
+    // Render promoted FAQs table
+    renderPromotedFaqsTable();
+  }
+
+  const adminPromotedTableBody = document.getElementById('admin-promoted-table-body');
+
+  function renderPromotedFaqsTable() {
+    if (!adminPromotedTableBody) return;
+    adminPromotedTableBody.innerHTML = '';
+    
+    const adminFaqs = getAdminAddedFaqs();
+    
+    if (adminFaqs.length === 0) {
+      adminPromotedTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; opacity: 0.6;">No promoted FAQs yet.</td></tr>';
+      return;
+    }
+
+    adminFaqs.forEach((af, index) => {
+      const categoryName = faqData[af.categoryIndex] ? faqData[af.categoryIndex].category : 'Unknown';
+      const tr = document.createElement('tr');
+      
+      const questionTd = document.createElement('td');
+      questionTd.style.cssText = 'max-width: 200px; word-wrap: break-word;';
+      questionTd.textContent = af.question;
+      
+      const answerTd = document.createElement('td');
+      answerTd.style.cssText = 'max-width: 200px; word-wrap: break-word;';
+      answerTd.textContent = af.answer.length > 80 ? af.answer.slice(0, 80) + '...' : af.answer;
+      
+      const catTd = document.createElement('td');
+      catTd.textContent = categoryName;
+      
+      const addedByTd = document.createElement('td');
+      addedByTd.textContent = af.addedBy;
+      
+      const dateTd = document.createElement('td');
+      dateTd.textContent = af.addedDate;
+      
+      const actionTd = document.createElement('td');
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'btn';
+      removeBtn.style.cssText = 'padding: 0.3rem 0.6rem; background-color: #ef4444; color: white; font-size: 0.8rem;';
+      removeBtn.textContent = 'Remove';
+      removeBtn.addEventListener('click', () => {
+        if (confirm(`Remove this FAQ?\n\n"${af.question}"\n\nThis will also deduct the +50 SP awarded to the student.`)) {
+          // Remove from localStorage
+          const faqs = getAdminAddedFaqs();
+          faqs.splice(index, 1);
+          setAdminAddedFaqs(faqs);
+          
+          // Remove from in-memory faqData
+          if (faqData[af.categoryIndex]) {
+            const qIdx = faqData[af.categoryIndex].questions.findIndex(q => q.q === af.question);
+            if (qIdx !== -1) {
+              faqData[af.categoryIndex].questions.splice(qIdx, 1);
+            }
+          }
+
+          // Deduct the +50 SP from the student who asked the question
+          const asker = users.find(u => u.email === af.askerEmail);
+          if (asker) {
+            if (asker.sp === undefined) asker.sp = 0;
+            if (!asker.spHistory) asker.spHistory = [];
+            
+            asker.sp -= 50;
+            asker.spHistory.push({
+              query: af.question,
+              amount: -50,
+              type: 'penalty',
+              date: new Date().toLocaleDateString()
+            });
+            saveState();
+          }
+          
+          renderFaqs();
+          renderPromotedFaqsTable();
+        }
+      });
+      actionTd.appendChild(removeBtn);
+      
+      tr.appendChild(questionTd);
+      tr.appendChild(answerTd);
+      tr.appendChild(catTd);
+      tr.appendChild(addedByTd);
+      tr.appendChild(dateTd);
+      tr.appendChild(actionTd);
+      adminPromotedTableBody.appendChild(tr);
+    });
+  }
+
+  // SP Edit Modal Logic
+  const spEditModal = document.getElementById('sp-edit-modal');
+  const spEditUserInfo = document.getElementById('sp-edit-user-info');
+  const spEditCurrent = document.getElementById('sp-edit-current');
+  const spEditAction = document.getElementById('sp-edit-action') as HTMLSelectElement;
+  const spEditAmount = document.getElementById('sp-edit-amount') as HTMLInputElement;
+  const spEditReason = document.getElementById('sp-edit-reason') as HTMLInputElement;
+  const spEditSubmit = document.getElementById('sp-edit-submit');
+  const spEditCancel = document.getElementById('sp-edit-cancel');
+  let currentSpEditIndex: number | null = null;
+
+  function openSpEditModal(userIndex: number) {
+    const user = users[userIndex];
+    if (!user) return;
+    currentSpEditIndex = userIndex;
+    spEditUserInfo.textContent = `${user.name || 'Unknown'} (${user.email})`;
+    spEditCurrent.innerHTML = `Current SP: <strong>${user.sp || 0}</strong>`;
+    spEditAction.value = 'award';
+    spEditAmount.value = '';
+    spEditReason.value = '';
+    spEditModal.classList.add('active');
+  }
+
+  if (spEditCancel) {
+    spEditCancel.addEventListener('click', () => {
+      spEditModal.classList.remove('active');
+    });
+  }
+
+  if (spEditSubmit) {
+    spEditSubmit.addEventListener('click', () => {
+      if (currentSpEditIndex === null) return;
+      const amount = parseInt(spEditAmount.value);
+      if (isNaN(amount) || amount < 0) {
+        alert('Please enter a valid positive number.');
+        return;
+      }
+      const reason = spEditReason.value.trim() || 'Admin manual adjustment';
+      const action = spEditAction.value;
+      const user = users[currentSpEditIndex];
+      if (!user) return;
+
+      if (user.sp === undefined) user.sp = 0;
+      if (!user.spHistory) user.spHistory = [];
+
+      let change = 0;
+      let historyType: 'award' | 'penalty' = 'award';
+
+      if (action === 'award') {
+        change = amount;
+        user.sp += amount;
+        historyType = 'award';
+      } else if (action === 'deduct') {
+        change = -amount;
+        user.sp -= amount;
+        historyType = 'penalty';
+      } else if (action === 'set') {
+        change = amount - user.sp;
+        historyType = change >= 0 ? 'award' : 'penalty';
+        user.sp = amount;
+      }
+
+      user.spHistory.push({
+        query: reason,
+        amount: change,
+        type: historyType,
+        date: new Date().toLocaleDateString()
+      });
+
+      saveState();
+      renderAdminUsersTable();
+      spEditModal.classList.remove('active');
+    });
   }
 
   resolveCancelBtn.addEventListener('click', () => {
@@ -1107,9 +1452,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentResolveIndex !== null) {
       const queryToResolve = unresolvedQueries[currentResolveIndex];
       
-      // Award SP if proposed by another student
-      if (queryToResolve.proposedBy) {
-        const proposer = users.find(u => u.email === queryToResolve.proposedBy);
+      let giveCreditToProposer = false;
+      let finalResolvedBy = currentAdminEmail;
+
+      if (currentProposerEmail) {
+        if (answer === currentOriginalProposedAnswer) {
+          giveCreditToProposer = true;
+        } else if (creditProposerCheckbox && creditProposerCheckbox.checked) {
+          giveCreditToProposer = true;
+        }
+      }
+
+      // Award SP if proposed by another student and they are getting credit
+      if (giveCreditToProposer) {
+        const proposer = users.find(u => u.email === currentProposerEmail);
         if (proposer) {
           if (proposer.sp === undefined) proposer.sp = 0;
           if (!proposer.spHistory) proposer.spHistory = [];
@@ -1121,7 +1477,54 @@ document.addEventListener('DOMContentLoaded', () => {
             type: 'award',
             date: new Date().toLocaleDateString()
           });
+          
+          finalResolvedBy = `Approved by Admin (Answered by ${proposer.name || proposer.email})`;
         }
+      }
+
+      // Handle FAQ Promotion
+      if (addToFaqCheckbox && addToFaqCheckbox.checked) {
+        const categoryIndex = parseInt(faqCategorySelect.value);
+        const reframedQuestion = faqReframeInput.value.trim() || queryToResolve.term;
+        
+        // Add question to faqData in memory
+        if (faqData[categoryIndex]) {
+          faqData[categoryIndex].questions.push({
+            q: reframedQuestion,
+            a: answer
+          });
+        }
+
+        // Persist to localStorage
+        const adminFaqs = getAdminAddedFaqs();
+        adminFaqs.push({
+          question: reframedQuestion,
+          answer: answer,
+          categoryIndex: categoryIndex,
+          addedBy: currentAdminEmail || 'Admin',
+          addedDate: new Date().toLocaleDateString(),
+          askerEmail: queryToResolve.userEmail
+        });
+        setAdminAddedFaqs(adminFaqs);
+
+        // Award +50 SP to the student who asked the question
+        const asker = users.find(u => u.email === queryToResolve.userEmail);
+        if (asker) {
+          if (asker.sp === undefined) asker.sp = 0;
+          if (!asker.spHistory) asker.spHistory = [];
+          
+          asker.sp += 50;
+          asker.spHistory.push({
+            query: queryToResolve.term,
+            amount: 50,
+            type: 'award',
+            date: new Date().toLocaleDateString()
+          });
+        }
+
+        // Re-render FAQs and promoted table
+        renderFaqs();
+        renderPromotedFaqsTable();
       }
 
       resolvedQueries.push({
@@ -1129,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', () => {
         answer: answer,
         userName: queryToResolve.userName,
         userEmail: queryToResolve.userEmail,
-        resolvedBy: currentAdminEmail
+        resolvedBy: finalResolvedBy
       });
       unresolvedQueries.splice(currentResolveIndex, 1);
       saveState();
@@ -1180,6 +1583,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const adminFormSubtitle = document.getElementById('admin-form-subtitle');
   let isAdminSignupMode = false;
 
+  // Show community & leaderboard links when admin logs in
+  function showAdminNavLinks() {
+    navCommunityQueries.style.display = 'flex';
+    if (navLeaderboard) navLeaderboard.style.display = 'flex';
+  }
+
+  // On admin lock, hide community/leaderboard ONLY if no student is logged in
+  function hideAdminNavLinks() {
+    if (!currentUserEmail) {
+      navCommunityQueries.style.display = 'none';
+      if (navLeaderboard) navLeaderboard.style.display = 'none';
+    }
+  }
+
   function lockAdmin() {
     currentAdminEmail = null;
     adminStep3.style.display = 'none';
@@ -1191,6 +1608,7 @@ document.addEventListener('DOMContentLoaded', () => {
     adminKeyError.style.display = 'none';
     adminLoginError.style.display = 'none';
     adminSignupSuccess.style.display = 'none';
+    hideAdminNavLinks();
   }
 
   // Step 1 -> Step 2
@@ -1263,13 +1681,63 @@ document.addEventListener('DOMContentLoaded', () => {
       adminLoginError.style.display = 'none';
       adminStep2.style.display = 'none';
       adminStep3.style.display = 'block';
+      showAdminNavLinks();
       renderAdminUsersTable();
+      renderCommunityQueries();
+      renderLeaderboard();
     } else {
       adminLoginError.textContent = 'Invalid Admin Email or Password.';
       adminLoginError.style.display = 'block';
     }
   });
 
+
+
   adminLockBtn.addEventListener('click', lockAdmin);
+
+  // ===== Session Persistence & 5-Minute Inactivity Auto-Logout =====
+  const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in ms
+
+  // Track user activity — update lastActive timestamp
+  function updateActivity() {
+    if (currentUserEmail) {
+      localStorage.setItem('faq_session_lastActive', Date.now().toString());
+    }
+  }
+
+  // Listen for any user activity
+  ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(evt => {
+    document.addEventListener(evt, updateActivity, { passive: true });
+  });
+
+  // Check every 30 seconds if user has been inactive for 5 minutes
+  setInterval(() => {
+    if (!currentUserEmail) return;
+    const lastActive = parseInt(localStorage.getItem('faq_session_lastActive') || '0');
+    if (Date.now() - lastActive > INACTIVITY_TIMEOUT) {
+      alert('You have been signed out due to inactivity.');
+      performLogout();
+    }
+  }, 30000);
+
+  // Restore session on page load (if user was logged in and still active)
+  const savedSessionEmail = localStorage.getItem('faq_session_email');
+  const savedLastActive = parseInt(localStorage.getItem('faq_session_lastActive') || '0');
+
+  if (savedSessionEmail && (Date.now() - savedLastActive < INACTIVITY_TIMEOUT)) {
+    // User was active less than 5 min ago — restore session
+    const userExists = users.some(u => u.email === savedSessionEmail);
+    if (userExists) {
+      loginUser(savedSessionEmail);
+    } else {
+      // User no longer exists, clear stale session
+      localStorage.removeItem('faq_session_email');
+      localStorage.removeItem('faq_session_lastActive');
+    }
+  } else if (savedSessionEmail) {
+    // Session expired, clean up
+    localStorage.removeItem('faq_session_email');
+    localStorage.removeItem('faq_session_lastActive');
+  }
 
 });

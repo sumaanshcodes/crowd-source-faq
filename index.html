@@ -350,6 +350,7 @@
                       <th>Name</th>
                       <th>User Email</th>
                       <th>Spurti Points</th>
+                      <th>Manage SP</th>
                       <th>Status</th>
                       <th>Joined Date</th>
                       <th>Last Sign In</th>
@@ -398,7 +399,27 @@
                   </tbody>
                 </table>
               </div>
-              
+
+              <h3 class="color-heading-2 mt-2">⭐ Promoted to FAQ</h3>
+              <p>User queries that have been added to the FAQ section. You can remove them if needed.</p>
+              <div class="table-container mt-1">
+                <table class="users-table">
+                  <thead>
+                    <tr>
+                      <th>Question</th>
+                      <th>Answer</th>
+                      <th>Category</th>
+                      <th>Added By</th>
+                      <th>Date</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-promoted-table-body">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
+              </div>
+
               <button id="admin-lock-btn" class="btn mt-2">Lock Admin Portal</button>
             </div>
 
@@ -493,16 +514,77 @@
 
   <!-- Resolve Query Modal -->
   <div id="resolve-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 500px; padding: 2rem;">
+    <div class="modal-content" style="max-width: 550px; padding: 2rem;">
       <h2 class="color-heading-2">Resolve Query</h2>
       <p id="resolve-query-text" style="font-weight: 500; margin-bottom: 1rem;"></p>
       <div class="input-group">
         <label>Answer</label>
         <textarea id="resolve-answer-input" rows="4" placeholder="Type the answer here..." style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--bg-tertiary); color: var(--text-primary);"></textarea>
       </div>
+
+      <!-- Credit Proposer Option -->
+      <div id="credit-proposer-container" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(34, 197, 94, 0.05);">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
+          <input type="checkbox" id="credit-proposer-checkbox" checked style="width: 18px; height: 18px; accent-color: var(--success-color);">
+          Give credit to <span id="proposer-name-display" style="color: var(--accent-primary);">User</span> for this answer
+        </label>
+        <p style="font-size: 0.85rem; margin-top: 0.5rem; opacity: 0.8;">Uncheck this if you had to heavily modify their answer and they do not deserve the credit.</p>
+      </div>
+
+      <!-- Add to FAQ Section -->
+      <div style="margin-top: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(99, 102, 241, 0.05);">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
+          <input type="checkbox" id="add-to-faq-checkbox" style="width: 18px; height: 18px; accent-color: var(--accent-primary);">
+          ⭐ Promote this query to FAQ (+50 SP to student)
+        </label>
+
+        <div id="add-to-faq-options" style="display: none; margin-top: 0.75rem;">
+          <div class="input-group" style="margin-bottom: 0.75rem;">
+            <label>Select FAQ Category</label>
+            <select id="faq-category-select" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--bg-tertiary); color: var(--text-primary);">
+              <!-- Populated by JS from faqData categories -->
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Reframe the Question (optional)</label>
+            <input type="text" id="faq-reframe-input" placeholder="Leave blank to use the original question" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--bg-tertiary); color: var(--text-primary);">
+          </div>
+        </div>
+      </div>
+
       <div style="display: flex; gap: 1rem; margin-top: 1rem;">
         <button id="resolve-submit-btn" class="btn primary-btn">Submit Answer</button>
         <button id="resolve-cancel-btn" class="btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SP Management Modal -->
+  <div id="sp-edit-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 450px; padding: 2rem;">
+      <h2 class="color-heading-2">Manage Spurti Points</h2>
+      <p id="sp-edit-user-info" style="font-weight: 500; margin-bottom: 0.5rem;"></p>
+      <p id="sp-edit-current" style="font-size: 1.1rem; margin-bottom: 1rem;"></p>
+      
+      <div class="input-group" style="margin-bottom: 0.75rem;">
+        <label>Action</label>
+        <select id="sp-edit-action" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--bg-tertiary); color: var(--text-primary);">
+          <option value="award">Award SP (+)</option>
+          <option value="deduct">Deduct SP (-)</option>
+          <option value="set">Set SP (=)</option>
+        </select>
+      </div>
+      <div class="input-group" style="margin-bottom: 0.75rem;">
+        <label>Amount</label>
+        <input type="number" id="sp-edit-amount" min="0" placeholder="Enter SP amount" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--bg-tertiary); color: var(--text-primary);">
+      </div>
+      <div class="input-group" style="margin-bottom: 0.75rem;">
+        <label>Reason</label>
+        <input type="text" id="sp-edit-reason" placeholder="Reason for SP change" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--bg-tertiary); color: var(--text-primary);">
+      </div>
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button id="sp-edit-submit" class="btn primary-btn">Apply</button>
+        <button id="sp-edit-cancel" class="btn">Cancel</button>
       </div>
     </div>
   </div>
