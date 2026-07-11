@@ -26,7 +26,7 @@ export default function FreshnessBadge({
 
   if (reviewStatus === 'pending_review') {
     return (
-      <span className={`inline-flex items-center gap-1 text-xs font-medium text-yellow-700 bg-yellow-50 px-1.5 py-0.5 rounded ${compact ? 'text-[10px]' : ''}`}>
+      <span className={`inline-flex items-center gap-1 text-xs font-medium text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-md ${compact ? 'text-[10px]' : ''}`}>
         ⏳ Under review
       </span>
     );
@@ -34,15 +34,15 @@ export default function FreshnessBadge({
 
   if (reviewStatus === 'update_requested') {
     return (
-      <span className={`inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded ${compact ? 'text-[10px]' : ''}`}>
-        ⚠ Update requested
+      <span className={`inline-flex items-center gap-1 text-xs font-medium text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-md ${compact ? 'text-[10px]' : ''}`}>
+        ⚠️ Update requested
       </span>
     );
   }
 
   if (isEvergreen) {
     return (
-      <span className={`inline-flex items-center gap-1 text-xs text-green-600 ${compact ? '' : 'font-medium'}`}>
+      <span className={`inline-flex items-center gap-1 text-xs text-emerald-400 ${compact ? '' : 'font-medium'}`}>
         ✓ Verified
       </span>
     );
@@ -52,14 +52,14 @@ export default function FreshnessBadge({
 
   if (nearingExpiry) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
+      <span className="inline-flex items-center gap-1 text-xs text-yellow-500 font-medium">
         ✓ Verified {days}d ago
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-green-600">
+    <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium">
       ✓ Verified {days}d ago
     </span>
   );
