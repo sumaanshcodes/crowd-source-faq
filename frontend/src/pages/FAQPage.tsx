@@ -1,538 +1,177 @@
-// FAQ Page — A cards-based layout showing FAQ categories and a powerful search.
-// Designed specifically for interns who are looking for answers desperately and need them fast.
-//
-// Layout states:
-// 1. DETAIL STATE     → shows the clicked FAQ detail view.
-// 2. SEARCH ACTIVE     → shows the list of search results.
-// 3. CATEGORY ACTIVE   → shows the filtered category questions list.
-// 4. DEFAULT STATE     → shows a grid of category-wise FAQ cards showing top questions.
+import React, { useState, useMemo } from 'react';
+import { faqData, FAQItem } from '@/components/faq/FaqData'; // Adjust this path if needed
+import { getCategoryIcon } from '@/components/faq/faqUtils'; // Adjust this path if needed
+import QuestionList from '@/components/faq/QuestionList'; // Adjust this path if needed
 
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import Navbar from '../components/layout/Navbar';
-import Footer from '../components/layout/Footer';
-import UserActiveProgramIndicator from '../components/layout/UserActiveProgramIndicator';
-import SearchBar from '../components/search/SearchBar';
-import { HomeDoodles } from '../components/ui/PageDoodles';
-import api, { friendlyError } from '../utils/api';
-import type { TrendingQuery } from '../types/ui';
-import { useBatch } from '../context/BatchContext';
-
-// Modular FAQ components — shared utilities
-import {
-  FAQItem,
-  getCategoryIcon,
-  getCategoryDescription,
-  formatCategoryName,
-  getCategoryTone,
-  getQuestionTitle,
-} from '../components/faq/faqUtils';
-import SearchDropdown from '../components/faq/SearchDropdown';
-import SearchFeedback from '../components/faq/SearchFeedback';
-import QuestionList from '../components/faq/QuestionList';
-import QuestionDetail from '../components/faq/QuestionDetail';
-import CTA from '../components/ui/CTA';
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  Main page
-// ═══════════════════════════════════════════════════════════════════════════
 export default function FAQPage() {
-  const { currentBatch } = useBatch();
-  const batchId = currentBatch?._id ?? null;
-
-  // ── Core data ────────────────────────────────────────────────────────────
-  const [grouped, setGrouped] = useState<Record<string, FAQItem[]>>({});
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  // ── UI state ─────────────────────────────────────────────────────────────
-  const [activeCategory, setActiveCategory] = useState('');
-  const [activeQuestion, setActiveQuestion] = useState<FAQItem | null>(null);
+  const [activeCategory, setActiveCategory] = useState('All Categories');
+  const [activeTab, setActiveTab] = useState('Most Popular');
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<FAQItem[] | null>(null);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [sortOption, setSortOption] = useState('relevant');
-  const [visibleCount, setVisibleCount] = useState(8);
 
-  const searchBarRef = useRef<HTMLInputElement>(null);
-  const [resultFaqId, setResultFaqId] = useState<string | undefined>(undefined);
-  const { id: urlFaqId } = useParams<string>();
-  const navigate = useNavigate();
-
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Dynamically extract categories and counts
+  const categories = useMemo(() => {
+    const counts: Record<string, number> = {};
+    faqData.forEach(item => {
+      counts[item.category] = (counts[item.category] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
   }, []);
 
-  // ── Fetch all FAQs when batchId changes ─────────────────────────
-  useEffect(() => {
-    if (!batchId) return;
-    let mounted = true;
-    setLoading(true);
-
-    // /api/faq — full grouped list
-    api.get('/faq', { params: { batchId } })
-      .then((res) => {
-        if (!mounted) return;
-        setGrouped(res.data.grouped || {});
-        setTotal(res.data.total || 0);
-      })
-      .catch((err: unknown) => {
-        if (!mounted) return;
-        const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load FAQs. Please try again.';
-        setError(message);
-      })
-      .finally(() => { if (mounted) setLoading(false); });
-
-    return () => { mounted = false; };
-  }, [batchId]);
-
-  // ── Derived data ─────────────────────────────────────────────────────────
-  const categories = useMemo(() => Object.keys(grouped).sort(), [grouped]);
-
-  const flatQuestions = useMemo(() => (
-    categories.flatMap((name) => (grouped[name] || []).map((item) => ({
-      ...item,
-      category: item.category || name,
-      source: item.source || 'faq',
-    })))
-  ), [categories, grouped]);
-
-  // ── Deep-link handler (/faq/:id from URL) ───────────────────────────────
-  useEffect(() => {
-    if (!urlFaqId) return;
-    if (grouped && Object.keys(grouped).length > 0) {
-      for (const [cat, items] of Object.entries(grouped)) {
-        const found = items.find((item) => item._id === urlFaqId);
-        if (found) {
-          setActiveQuestion({ ...found, category: cat });
-          setActiveCategory(cat);
-          return;
-        }
-      }
+  // Filter questions - EXPLICITLY TYPED AS FAQItem[] to fix your error
+  const displayQuestions = useMemo<FAQItem[]>(() => {
+    let filtered = faqData;
+    if (activeCategory !== 'All Categories') {
+      filtered = filtered.filter(q => q.category === activeCategory);
     }
-    api.get(`/faq/${urlFaqId}`)
-      .then((res) => {
-        const faq = res.data;
-        if (faq && faq._id) {
-          setActiveQuestion({ ...faq, category: faq.category || '' });
-          setActiveCategory(faq.category || '');
-        }
-      })
-      .catch(() => { /* FAQ not found */ });
-  }, [urlFaqId, grouped]);
-
-  // Pre-selected FAQ highlight signal
-  useEffect(() => {
-    if (!grouped || Object.keys(grouped).length === 0) return;
-    const highlightStr = sessionStorage.getItem('yaksha_faq_highlight');
-    if (!highlightStr) return;
-    try {
-      const highlight = JSON.parse(highlightStr) as FAQItem;
-      sessionStorage.removeItem('yaksha_faq_highlight');
-      const category = highlight.category || '';
-      if (category && grouped[category]) {
-        const found = grouped[category].find((item) => item._id === highlight._id);
-        if (found) {
-          setActiveQuestion({ ...found, category });
-          setActiveCategory(category);
-        }
-      }
-    } catch {
-      sessionStorage.removeItem('yaksha_faq_highlight');
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        q => q.question.toLowerCase().includes(query) || q.answer.toLowerCase().includes(query)
+      );
     }
-  }, [grouped]);
+    return filtered;
+  }, [activeCategory, searchQuery]);
 
-  // ── Search bookkeeping ──────────────────────────────────────────────────
-  useEffect(() => {
-    setVisibleCount(8);
-  }, [activeCategory, searchResults, searchQuery]);
-
-  useEffect(() => {
-    if (searchQuery.trim().length === 0) {
-      setSearchResults(null);
-      setSearchLoading(false);
-    }
-  }, [searchQuery]);
-
-  useEffect(() => {
-    if (Array.isArray(searchResults) && searchResults.length > 0) {
-      setResultFaqId((searchResults[0] as FAQItem)._id);
-    }
-  }, [searchResults]);
-
-  const activeCategoryItems = activeCategory ? (grouped[activeCategory] || []) : [];
-  const activeCategoryMeta = getCategoryDescription(activeCategoryItems);
-
-  const searchActive = searchQuery.trim().length >= 3 && Array.isArray(searchResults);
-  const showDropdown = searchQuery.trim().length > 0 && !searchActive;
-
-  const dropdownItems = useMemo(() => {
-    if (Array.isArray(searchResults) && searchQuery.trim().length >= 3) {
-      return searchResults;
-    }
-    if (!searchQuery.trim()) {
-      return flatQuestions.slice(0, 5);
-    }
-    const normalized = searchQuery.trim().toLowerCase();
-    return flatQuestions.filter((item) => (
-      getQuestionTitle(item).toLowerCase().includes(normalized)
-    )).slice(0, 5);
-  }, [flatQuestions, searchResults, searchQuery]);
-
-  const relatedItems = useMemo(() => {
-    if (!activeQuestion?.category) return [];
-    const pool = grouped[activeQuestion.category] || [];
-    return pool.filter((item) => item._id !== activeQuestion._id).slice(0, 5);
-  }, [activeQuestion, grouped]);
-
-  // ── Handlers ────────────────────────────────────────────────────────────
-  const handleCategoryOpen = (name: string) => {
-    setActiveCategory(name);
-    setActiveQuestion(null);
-    setSearchQuery('');
-    setSearchResults(null);
-    setSearchLoading(false);
-    setVisibleCount(8);
-    window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
-  };
-
-  const handleQuestionOpen = (item: FAQItem) => {
-    setActiveQuestion(item);
-    setSearchQuery('');
-    setSearchResults(null);
-    scrollToTop();
-  };
-
-  const handleBackToCategories = () => {
-    setActiveCategory('');
-    setActiveQuestion(null);
-  };
-
-  const handleBackFromDetail = () => {
-    const fromHomepage = !!sessionStorage.getItem('yaksha_faq_highlight');
-    sessionStorage.removeItem('yaksha_faq_highlight');
-    if (fromHomepage) {
-      navigate('/');
-      return;
-    }
-    setActiveQuestion(null);
-  };
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    if (value.trim()) {
-      setActiveCategory('');
-      setActiveQuestion(null);
-      setSearchResults(null);
-    }
-  };
-
-  const handleClearSearch = () => {
-    setSearchQuery('');
-    setSearchResults(null);
-    setSearchLoading(false);
-  };
-
-  // ── Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-bg grid-bg relative">
-      <HomeDoodles />
-      <Navbar />
-
-      <main className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-[112px] sm:pt-[128px] pb-10 relative z-10">
-        {/* Active program pill */}
-        <div className="flex justify-center">
-          <UserActiveProgramIndicator />
+    <div className="min-h-screen bg-[#0B0F15] text-white p-6 font-sans selection:bg-emerald-500/30">
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Header */}
+        <div className="flex flex-col items-center justify-center text-center pt-28 pb-10">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-bold mb-4 uppercase tracking-wider">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+            FAQs
+          </span>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+            Frequently Asked <span className="text-emerald-500">Questions</span>
+          </h1>
+          
+          {/* Main Search Bar */}
+          <div className="relative mt-8 w-full max-w-2xl">
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input 
+              type="text" 
+              placeholder="Ask anything about your internship..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#131821] border border-gray-800 text-white rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-lg"
+            />
+          </div>
         </div>
 
-        {/* ─── TITLE BANNER ───────────────────────────────────────────── */}
-        <section className="text-center pt-3 pb-2 relative">
-          <h1 className="font-serif text-3xl sm:text-4xl leading-tight text-ink mt-3">
-            Intern FAQs — <span className="text-accent font-serif" style={{ fontWeight: 700 }}>solved</span>
-          </h1>
-          <p className="text-sm text-ink-soft mt-3 max-w-xl mx-auto">
-            Find immediate answers to your program, certificate, and internship doubts.
-          </p>
-          {!loading && !error && total > 0 && (
-            <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-ink-faint mt-2.5">
-              {total} {total === 1 ? 'FAQ' : 'FAQs'} · {categories.length} categories
-            </p>
-          )}
-        </section>
-
-        {/* ─── SEARCH BAR ───────────────────────────────────────────── */}
-        <section className="relative max-w-2xl mx-auto mt-8 mb-4">
-          <div className={`relative ${showDropdown ? 'z-40' : 'z-20'}`}>
-            <SearchBar
-              ref={searchBarRef}
-              value={searchQuery}
-              onQueryChange={handleSearchChange}
-              onResults={(res) => setSearchResults(res as unknown as FAQItem[])}
-              onLoading={setSearchLoading}
-              onError={(err) => setError(err || '')}
-              placeholder="Ask anything about your internship..."
-              disableSuggestions={true}
-            />
-
-            {showDropdown && (
-              <SearchDropdown
-                query={searchQuery}
-                items={dropdownItems}
-                categories={categories}
-                onSelectQuestion={handleQuestionOpen}
-                onSelectCategory={handleCategoryOpen}
-                onClear={handleClearSearch}
-                loading={searchLoading}
-              />
-            )}
-          </div>
-        </section>
-
-        {/* ─── CATEGORY FILTER PILLS ─────────────────────────────────── */}
-        {!loading && !error && !activeQuestion && !searchActive && categories.length > 0 && (
-          <nav
-            className="mt-3 max-w-5xl mx-auto px-1 flex flex-wrap justify-center gap-2"
-            aria-label="Filter by category"
+        {/* Category Grid (Fixed clipping issue) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-10">
+          <button
+            onClick={() => setActiveCategory('All Categories')}
+            className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${
+              activeCategory === 'All Categories'
+                ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                : 'border-gray-800 bg-[#131821] hover:border-gray-600 hover:bg-gray-800/40'
+            }`}
           >
+            <span className="text-2xl mb-2">㗊</span>
+            <span className={`text-xs font-bold text-center leading-tight ${activeCategory === 'All Categories' ? 'text-emerald-400' : 'text-gray-300'}`}>All Categories</span>
+            <span className="text-[10px] text-gray-500 mt-1 font-medium">{faqData.length} Questions</span>
+          </button>
+
+          {categories.map((cat) => (
             <button
-              type="button"
-              onClick={() => handleCategoryOpen('')}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-200 ${
-                !activeCategory
-                  ? 'bg-accent text-accent-text border-accent/60 shadow-[0_6px_18px_rgba(90,122,90,0.18)]'
-                  : 'bg-card text-ink border-border/70 hover:bg-cream hover:-translate-y-0.5'
+              key={cat.name}
+              onClick={() => setActiveCategory(cat.name)}
+              className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all ${
+                activeCategory === cat.name
+                  ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                  : 'border-gray-800 bg-[#131821] hover:border-gray-600 hover:bg-gray-800/40'
               }`}
             >
-              All
+              <span className={`text-2xl mb-2 ${activeCategory === cat.name ? 'text-emerald-400' : 'text-gray-500'}`}>
+                {getCategoryIcon(cat.name)}
+              </span>
+              <span className={`text-xs font-bold text-center leading-tight ${activeCategory === cat.name ? 'text-emerald-400' : 'text-gray-300'}`}>{cat.name}</span>
+              <span className="text-[10px] text-gray-500 mt-1 font-medium">{cat.count} Questions</span>
             </button>
-            {categories.map((cat) => {
-              const isActive = activeCategory === cat;
-              const count = grouped[cat]?.length ?? 0;
-              return (
+          ))}
+        </div>
+
+        {/* 3. Main 2-Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* LEFT COLUMN: Main Feed */}
+          <div className="lg:col-span-2 bg-[#131821] border border-gray-800 rounded-xl overflow-hidden flex flex-col shadow-xl">
+            
+            {/* Feed Tabs */}
+            <div className="flex items-center gap-6 px-6 border-b border-gray-800 bg-[#0B0F15]/50">
+              {['Most Popular', 'Latest Questions', 'Unanswered'].map((tab) => (
                 <button
-                  key={cat}
-                  type="button"
-                  onClick={() => handleCategoryOpen(cat)}
-                  className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-200 ${
-                    isActive
-                      ? 'bg-accent text-accent-text border-accent/60 shadow-[0_6px_18px_rgba(90,122,90,0.18)]'
-                      : 'bg-card text-ink border-border/70 hover:bg-cream hover:-translate-y-0.5'
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex items-center gap-2 py-4 text-sm font-bold transition-colors border-b-2 ${
+                    activeTab === tab
+                      ? 'border-emerald-500 text-emerald-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-300'
                   }`}
                 >
-                  {formatCategoryName(cat)} · {count}
+                  {tab === 'Most Popular' && <span>🔥</span>}
+                  {tab === 'Latest Questions' && <span>⏱️</span>}
+                  {tab === 'Unanswered' && <span>❔</span>}
+                  {tab}
                 </button>
-              );
-            })}
-          </nav>
-        )}
+              ))}
+            </div>
 
-        {/* ─── LOADING / ERROR STATES ──────────────────────────────── */}
-        {loading && (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 mt-10">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-[200px] rounded-2xl border border-border bg-card/70 animate-pulse" />
-            ))}
+            {/* Questions List (Error resolved!) */}
+            <QuestionList items={displayQuestions} />
+            
           </div>
-        )}
 
-        {error && !loading && (
-          <div className="mt-8 rounded-2xl bg-danger-light border border-danger/15 p-6 text-center space-y-3">
-            <p className="text-sm text-danger font-medium">{error}</p>
-            <button
-              onClick={() => { setError(''); setLoading(true); api.get('/faq').then(res => { setGrouped(res.data.grouped || {}); setTotal(res.data.total || 0); }).catch((err: unknown) => { const m = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load FAQs.'; setError(m); }).finally(() => setLoading(false)); }}
-              className="px-5 py-2 text-sm font-medium bg-danger text-accent-text rounded-full hover:bg-danger/90 transition-colors"
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {/* ─── DETAIL VIEW (when a question is opened) ──────────────── */}
-        {!loading && !error && activeQuestion && (
-          <QuestionDetail
-            item={activeQuestion}
-            relatedItems={relatedItems}
-            onBack={handleBackFromDetail}
-            onSelectRelated={handleQuestionOpen}
-            backLabel={
-              searchActive
-                ? 'Back to Search Results'
-                : activeCategory
-                ? `Back to ${formatCategoryName(activeCategory)}`
-                : 'Back to Categories'
-            }
-          />
-        )}
-
-        {/* ─── SEARCH RESULTS ───────────────────────────────────────── */}
-        {!loading && !error && !activeQuestion && searchActive && (
-          <section className="max-w-4xl mx-auto mt-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-              <div>
-                <p className="text-xs font-semibold text-ink-faint uppercase tracking-wide">Search results</p>
-                <h2 className="text-lg font-semibold text-ink">Results for &quot;{searchQuery}&quot;</h2>
+          {/* RIGHT COLUMN: Sidebar */}
+          <div className="lg:col-span-1 flex flex-col gap-6">
+            <div className="bg-[#131821] border border-gray-800 rounded-xl p-6 shadow-xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-white text-lg">Trending Questions</h3>
+                <svg className="text-emerald-500" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
               </div>
-              <button
-                onClick={handleClearSearch}
-                className="text-xs font-semibold text-ink-soft hover:text-ink transition-colors"
-              >
-                Clear search
-              </button>
-            </div>
-            <QuestionList
-              items={searchResults || []}
-              loading={searchLoading}
-              sortOption={sortOption}
-              onSortChange={setSortOption}
-              visibleCount={visibleCount}
-              onLoadMore={() => setVisibleCount((prev) => prev + 6)}
-              emptyMessage="No results yet. Try another keyword or browse a category."
-            />
-          </section>
-        )}
-
-        {/* ─── FILTERED CATEGORY VIEW ───────────────────────────────── */}
-        {!loading && !error && !activeQuestion && !searchActive && activeCategory && (
-          <section className="max-w-4xl mx-auto mt-6">
-            <div className="mb-6">
-              <button
-                onClick={handleBackToCategories}
-                className="inline-flex items-center gap-2 text-xs font-semibold text-ink-soft hover:text-ink transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-                Back to all categories
-              </button>
-              <h2 className="mt-3 text-xl font-semibold text-ink flex items-center gap-2">
-                <span className={`w-9 h-9 rounded-xl bg-mist flex items-center justify-center ${getCategoryTone(activeCategory).accent}`}>
-                  {getCategoryIcon(activeCategory)}
-                </span>
-                {formatCategoryName(activeCategory)}
-                <span className="ml-1 text-[11px] uppercase tracking-wider font-semibold text-ink-faint">
-                  · {activeCategoryItems.length} {activeCategoryItems.length === 1 ? 'question' : 'questions'}
-                </span>
-              </h2>
-              {activeCategoryMeta && (
-                <p className="mt-2 text-sm text-ink-soft max-w-2xl">
-                  {activeCategoryMeta}
-                </p>
-              )}
-            </div>
-            <QuestionList
-              items={activeCategoryItems.map((item) => ({
-                ...item,
-                category: activeCategory,
-                source: item.source || 'faq',
-              }))}
-              loading={false}
-              sortOption={sortOption}
-              onSortChange={setSortOption}
-              visibleCount={visibleCount}
-              onLoadMore={() => setVisibleCount((prev) => prev + 6)}
-              emptyMessage="No questions in this category yet."
-            />
-          </section>
-        )}
-
-        {/* ─── DEFAULT STATE: CATEGORY-WISE CARDS GRID ──────────────── */}
-        {!loading && !error && !activeQuestion && !searchActive && !activeCategory && (
-          <section className="max-w-6xl mx-auto mt-10">
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {categories.map((cat) => {
-                const items = grouped[cat] || [];
-                const count = items.length;
-                const topQuestions = items.slice(0, 3);
-                const tone = getCategoryTone(cat);
-
-                return (
-                  <div
-                    key={cat}
-                    onClick={() => handleCategoryOpen(cat)}
-                    className="group bg-card rounded-2xl border border-border/60 shadow-subtle p-5 hover:shadow-card-hover hover:-translate-y-0.5 hover:border-accent/30 transition-all duration-300 ease-smooth cursor-pointer text-left flex flex-col justify-between"
-                  >
-                    <div>
-                      {/* Card Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <span className={`w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center transition-colors group-hover:bg-accent/15 ${tone.accent}`}>
-                          {getCategoryIcon(cat)}
-                        </span>
-                        <span className="text-[10px] font-medium text-ink-soft bg-mist px-2.5 py-1 rounded-full">
-                          {count} {count === 1 ? 'question' : 'questions'}
-                        </span>
-                      </div>
-
-                      {/* Card Title */}
-                      <h3 className="text-base font-semibold text-ink leading-snug mb-4 line-clamp-2 group-hover:text-accent transition-colors duration-200">
-                        {formatCategoryName(cat)}
-                      </h3>
-
-                      {/* Top Questions List */}
-                      {topQuestions.length > 0 && (
-                        <div className="mb-4">
-                          <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-wider mb-2">
-                            Top questions
-                          </p>
-                          <ul className="space-y-2.5">
-                            {topQuestions.map((item, idx) => (
-                              <li
-                                key={item._id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleQuestionOpen(item);
-                                }}
-                                className="text-xs text-ink-soft hover:text-accent flex gap-1.5 leading-snug transition-colors duration-200"
-                              >
-                                <span className="text-ink-faint shrink-0 tabular-nums">
-                                  {idx + 1}.
-                                </span>
-                                <span className="truncate">
-                                  {getQuestionTitle(item)}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Card Footer Link */}
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-accent pt-4 border-t border-border/40 mt-4">
-                      <span>Explore all</span>
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="transition-transform duration-300 group-hover:translate-x-0.5"
-                        aria-hidden="true"
-                      >
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                );
-              })}
+              <div className="space-y-5">
+                <TrendingItem num={1} title="How to submit my Phase 1 (CSFAQ) project?" views="2.1k" />
+                <TrendingItem num={2} title="What are Spurti Points (SP)?" views="1.8k" />
+                <TrendingItem num={3} title="How do I get the link for daily Zoom standups?" views="1.4k" />
+                <TrendingItem num={4} title="Why are videos stuck or repeating on ViBe?" views="980" />
+              </div>
             </div>
 
-            {/* CTA bottom section */}
-            <div className="mt-14">
-              <CTA />
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-5 flex items-center justify-between cursor-pointer hover:bg-emerald-500/10 transition-colors group shadow-lg">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full border-2 border-emerald-500/50 bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </div>
+                <div>
+                  <h4 className="text-emerald-400 font-bold text-sm">Still have a doubt?</h4>
+                  <p className="text-gray-400 text-xs mt-1 font-medium">Ask Yaksha in the chat</p>
+                </div>
+              </div>
+              <svg className="text-emerald-500 transform group-hover:translate-x-1 transition-transform" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </div>
-          </section>
-        )}
-      </main>
+          </div>
 
-      <Footer />
-
-      {searchActive && searchResults && searchResults.length > 0 && (
-        <SearchFeedback searchQuery={searchQuery} resultFaqId={resultFaqId} />
-      )}
+        </div>
+      </div>
     </div>
   );
 }
+
+// Sidebar Trending Item Component
+const TrendingItem = ({ num, title, views }: { num: number, title: string, views: string }) => (
+  <div className="flex gap-4 group cursor-pointer items-start">
+    <div className="w-7 h-7 rounded-full bg-gray-800 text-gray-400 flex items-center justify-center text-xs font-bold flex-shrink-0 group-hover:bg-emerald-500/20 group-hover:text-emerald-400 transition-colors">
+      {num}
+    </div>
+    <div>
+      <h4 className="text-sm font-bold text-gray-300 group-hover:text-emerald-400 transition-colors leading-snug">
+        {title}
+      </h4>
+      <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5 font-medium">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> {views} views
+      </p>
+    </div>
+  </div>
+);

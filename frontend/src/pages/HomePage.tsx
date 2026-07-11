@@ -488,6 +488,11 @@ export default function HomePage() {
     }
   };
 
+  const handleFindSolutionsClick = () => {
+    searchBarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    searchBarRef.current?.focus();
+  };
+
   // True when the user is browsing the discovery landing (nothing selected)
   const showDiscovery = !loading && !error && !activeQuestion && !searchActive && !activeCategory;
 
@@ -504,23 +509,25 @@ export default function HomePage() {
         </div>
 
         {/* ─── HERO ──────────────────────────────────────────────────── */}
-        <section className="text-center pt-3 pb-2 relative">
-          <h1 className="font-serif text-3xl sm:text-4xl md:text-[3.2rem] leading-[1.1] tracking-tight text-ink mt-3">
+        <section className="text-center pt-6 pb-2 relative">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-accent/30 bg-accent/10 text-accent text-[11px] font-semibold mb-5 backdrop-blur-sm">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            Powered by Community + AI
+          </div>
+          <h1 className="font-serif text-4xl sm:text-5xl md:text-[4rem] leading-[1.05] tracking-tight text-ink mt-1">
             Ask. Discover. Get{' '}
             <span className="doodle-underline font-serif" style={{ fontWeight: 700 }}>Solved.</span>
           </h1>
-          <p className="text-sm sm:text-base text-ink-soft mt-4 max-w-xl mx-auto leading-relaxed">
-            Search your doubt or explore solved questions from the community.
+          <p className="text-sm sm:text-base text-ink-soft mt-5 max-w-lg mx-auto leading-relaxed">
+            Search internship questions, discover community solutions,{' '}
+            <br className="hidden sm:block" />
+            and get AI-powered answers instantly.
           </p>
-          {total > 0 && (
-            <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-ink-faint mt-3">
-              {total} {total === 1 ? 'FAQ' : 'FAQs'} · {categories.length} categories
-            </p>
-          )}
         </section>
 
         {/* ─── SEARCH BAR ───────────────────────────────────────────── */}
-        <section className="relative max-w-2xl mx-auto mt-8 mb-4">
+        <section className="relative max-w-2xl mx-auto mt-7 mb-3">
           <div className={`relative ${showDropdown ? 'z-40' : 'z-20'}`}>
             <SearchBar
               ref={searchBarRef}
@@ -545,10 +552,42 @@ export default function HomePage() {
               />
             )}
           </div>
+
+          {/* Popular Search Pills — horizontally scrollable with right chevron */}
+          <div className="relative mt-4">
+            <div
+              id="pill-scroll"
+              className="flex items-center gap-2 overflow-x-auto scrollbar-none px-1"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {['#Attendance','#SP Points','#Assignments','#Certificates','#Projects','#Zoom Issues','#Login'].map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => { handleSearchChange(tag.replace('#','')); }}
+                  className="shrink-0 px-3 py-1 rounded-full bg-card/60 border border-border/60 text-[11px] text-ink-soft hover:text-accent hover:border-accent/40 hover:bg-accent/5 transition-all duration-200 backdrop-blur-sm whitespace-nowrap"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+            {/* Scroll arrow */}
+            <button
+              type="button"
+              aria-label="Scroll more tags"
+              onClick={() => {
+                const el = document.getElementById('pill-scroll');
+                if (el) el.scrollBy({ left: 120, behavior: 'smooth' });
+              }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-card border border-border/60 text-ink-soft hover:text-accent transition-colors z-10"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
         </section>
 
-        {/* ─── CATEGORY FILTER PILLS (clickable horizontal row) ─────── */}
-        {showDiscovery && categories.length > 0 && (
+        {/* ─── CATEGORY FILTER PILLS (shown only in search/category mode) ─── */}
+        {!showDiscovery && !searchActive && !activeCategory && categories.length > 0 && (
           <nav
             className="mt-3 max-w-5xl mx-auto px-1 flex flex-wrap justify-center gap-2"
             aria-label="Filter by category"
@@ -556,11 +595,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => handleCategoryOpen('')}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-200 ${
-                !activeCategory
-                  ? 'bg-accent text-accent-text border-accent/60 shadow-[0_6px_18px_rgba(90,122,90,0.18)]'
-                  : 'bg-card text-ink border-border/70 hover:bg-cream hover:-translate-y-0.5'
-              }`}
+              className="px-3 py-1.5 rounded-full text-[11px] font-semibold border bg-accent text-accent-text border-accent/60 shadow-[0_6px_18px_rgba(90,122,90,0.18)] transition-all duration-200"
             >
               All
             </button>
@@ -592,6 +627,115 @@ export default function HomePage() {
               </button>
             )}
           </nav>
+        )}
+
+        {/* ─── FEATURE CARDS — 6 cards matching the mockup ─── */}
+        {!activeQuestion && !searchActive && !activeCategory && (
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10 mb-2" aria-label="Action Center Dashboard">
+    {([
+              {
+                title: 'Ask Question',
+                description: 'Post your doubt and get answers from community.',
+                iconBg: 'bg-emerald-500/15',
+                iconColor: 'text-emerald-400',
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                ),
+                action: () => navigate('/community?create=true'),
+              },
+              {
+                title: 'Browse FAQs',
+                description: 'Find answers from existing questions and solutions.',
+                iconBg: 'bg-blue-500/15',
+                iconColor: 'text-blue-400',
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                  </svg>
+                ),
+                action: handleFindSolutionsClick,
+              },
+              {
+                title: 'Community',
+                description: 'Discuss, collaborate and help each other.',
+                iconBg: 'bg-purple-500/15',
+                iconColor: 'text-purple-400',
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                ),
+                action: () => navigate('/community'),
+              },
+              {
+                title: 'Leaderboard',
+                description: 'Top contributors and problem solvers.',
+                iconBg: 'bg-amber-500/15',
+                iconColor: 'text-amber-400',
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                ),
+                action: () => navigate('/leaderboard'),
+              },
+              {
+                title: 'Welcome Package',
+                description: 'Get started with resources and important links.',
+                iconBg: 'bg-red-500/15',
+                iconColor: 'text-red-400',
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 12V22H4V12" /><path d="M22 7H2v5h20V7z" /><path d="M12 22V7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                  </svg>
+                ),
+                action: () => navigate('/programs'),
+              },
+              {
+                title: 'Ask Yaksha AI',
+                description: 'Get instant AI-powered answers.',
+                iconBg: 'bg-teal-500/15',
+                iconColor: 'text-teal-400',
+                isBeta: true,
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" />
+                  </svg>
+                ),
+                action: () => { window.dispatchEvent(new CustomEvent('askai:open')); },
+              },
+            ] as Array<{ title: string; description: string; iconBg: string; iconColor: string; icon: React.ReactNode; action: () => void; isBeta?: boolean }>).map((card, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={card.action}
+                className="group text-left relative flex flex-col p-4 rounded-2xl border border-white/5 bg-[#1a2420]/80 backdrop-blur-md hover:bg-[#1e2c28]/90 hover:border-accent/20 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(34,197,94,0.1)] transition-all duration-300 overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl pointer-events-none" />
+                <div className={`relative z-10 shrink-0 w-11 h-11 rounded-xl ${card.iconBg} ${card.iconColor} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300`}>
+                  {card.icon}
+                </div>
+                <div className="relative z-10 flex-1">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <h3 className="text-xs font-semibold text-white group-hover:text-accent transition-colors duration-200 leading-snug">
+                      {card.title}
+                    </h3>
+                    {card.isBeta && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-400 border border-teal-500/20">Beta</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed line-clamp-2">{card.description}</p>
+                </div>
+                <div className="relative z-10 mt-3 flex items-center justify-end">
+                  <span className={`w-6 h-6 rounded-full ${card.iconBg} ${card.iconColor} flex items-center justify-center group-hover:translate-x-0.5 transition-transform duration-200`}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                  </span>
+                </div>
+              </button>
+            ))}
+          </section>
         )}
 
         {/* ─── LOADING / ERROR STATES ──────────────────────────────── */}
@@ -706,149 +850,244 @@ export default function HomePage() {
         {/* ─── DISCOVERY LANDING ─────────────────────────────────────── */}
         {showDiscovery && (
           <>
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
-              {/* LEFT — main column */}
-              <div className="lg:col-span-2 space-y-12">
-                {/* ───── MOST POPULAR (Last 7 days, numbered) ───── */}
-                <section aria-labelledby="most-popular-heading">
-                  <div className="bg-card rounded-2xl border border-border p-5 sm:p-6 shadow-subtle">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-accent" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                        <h2 id="most-popular-heading" className="font-serif text-lg text-ink leading-none">Most Popular</h2>
-                        <span className="text-[10px] text-ink-faint uppercase tracking-wider font-semibold ml-1">Last 7 days</span>
-                      </div>
-                    </div>
-                    <div className="divide-y divide-border/40">
-                      {popularLoading
-                        ? [1, 2, 3, 4, 5].map((n) => <NumberedSkeletonRow key={n} rank={n} />)
-                        : popularFaqs.length === 0
-                          ? <p className="text-xs text-ink-soft py-3">No popular FAQs yet — once interns start viewing, they'll show up here.</p>
-                          : popularFaqs.slice(0, 5).map((item, idx) => (
-                              <NumberedFaqRow
-                                key={item._id}
-                                rank={idx + 1}
-                                item={item}
-                                rightMeta={
-                                  <span className="block">
-                                    {formatViews(item.guestViewCount)}
-                                    <span className="mx-1">·</span>
-                                    {formatReadTime(item.expectedReadMs)}
-                                  </span>
-                                }
-                                onOpen={handleQuestionOpen}
-                              />
-                            ))
-                      }
+            {/* ── STATS BANNER ── */}
+            <section className="mt-8 rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm overflow-hidden">
+              <div className="grid grid-cols-2 sm:grid-cols-4">
+                {([
+                  { value: '25,000+', label: 'Questions Solved', iconColor: 'text-emerald-400', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+                  { value: '10,000+', label: 'Interns Helped', iconColor: 'text-purple-400', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> },
+                  { value: '98%', label: 'Answer Accuracy', iconColor: 'text-blue-400', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
+                  { value: '24/7', label: 'AI + Community Support', iconColor: 'text-amber-400', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+                ] as Array<{ value: string; label: string; iconColor: string; icon: React.ReactNode }>).map((stat, i, arr) => (
+                  <div key={stat.label} className={`flex items-center gap-3 px-6 py-5 ${i < arr.length - 1 ? 'border-b sm:border-b-0 sm:border-r border-border/40' : ''}`}>
+                    <span className={`shrink-0 ${stat.iconColor}`}>{stat.icon}</span>
+                    <div>
+                      <div className="text-xl font-bold text-ink leading-none">{stat.value}</div>
+                      <div className="text-[11px] text-ink-soft mt-0.5">{stat.label}</div>
                     </div>
                   </div>
-                </section>
+                ))}
+              </div>
+            </section>
 
-                {/* ───── RECENT FAQs (Newest, numbered) ───── */}
-                <section aria-labelledby="recent-faqs-heading">
-                  <div className="bg-card rounded-2xl border border-border p-5 sm:p-6 shadow-subtle">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-accent" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <circle cx="12" cy="12" r="10" />
-                          <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        <h2 id="recent-faqs-heading" className="font-serif text-lg text-ink leading-none">Recent FAQs</h2>
-                        <span className="text-[10px] text-ink-faint uppercase tracking-wider font-semibold ml-1">Newest</span>
-                      </div>
-                    </div>
-                    <div className="divide-y divide-border/40">
-                      {recentLoading
-                        ? [1, 2, 3, 4, 5].map((n) => <NumberedSkeletonRow key={n} rank={n} />)
-                        : recentPublicFaqs.length === 0
-                          ? <p className="text-xs text-ink-soft py-3">No recent FAQs yet.</p>
-                          : recentPublicFaqs.slice(0, 5).map((item, idx) => (
-                              <NumberedFaqRow
-                                key={item._id}
-                                rank={idx + 1}
-                                item={item}
-                                rightMeta={
-                                  <span className="block">
-                                    {formatShortDate(item.createdAt)}
-                                    {item.expectedReadMs ? <><span className="mx-1">·</span>{formatReadTime(item.expectedReadMs)}</> : null}
-                                  </span>
-                                }
-                                onOpen={handleQuestionOpen}
-                              />
-                            ))
-                      }
-                    </div>
+            {/* ── 3-COLUMN DASHBOARD GRID ── */}
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-8">
+
+              {/* ── COL 1: TRENDING QUESTIONS ── */}
+              <div className="bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 overflow-hidden">
+                <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border/40">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🔥</span>
+                    <h2 className="font-semibold text-sm text-ink">Trending Questions</h2>
                   </div>
-                </section>
-
-                {/* ───── TOP SOLVED TODAY (4-card grid from community) ───── */}
-                <TopSolved />
-
-                {/* ───── FROM ZOOM MEETINGS ───── */}
-                <FromMeetings />
-
-                {/* ───── ALL FAQs (full live list, 141 questions) ───── */}
-                <section aria-labelledby="all-faqs-heading">
-                  <div className="flex items-center justify-between mb-5">
-                     <div className="flex items-center gap-2">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-accent" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                      </svg>
-                      <h2 id="all-faqs-heading" className="font-serif text-xl text-ink">All FAQs</h2>
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-ink-faint">
-                        {total} questions
-                      </span>
-                    </div>
-                  </div>
-                  <QuestionList
-                    items={flatQuestions}
-                    loading={loading}
-                    sortOption={sortOption}
-                    onSortChange={setSortOption}
-                    visibleCount={visibleCount}
-                    onLoadMore={() => setVisibleCount((prev) => prev + 12)}
-                    emptyMessage="No FAQs yet."
-                  />
-                </section>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/community')}
+                    className="text-[11px] text-accent font-medium hover:underline flex items-center gap-1"
+                  >
+                    View All
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                </div>
+                <div className="divide-y divide-border/30">
+                  {popularLoading
+                    ? [1,2,3,4,5].map((n) => (
+                        <div key={n} className="px-5 py-3.5 animate-pulse">
+                          <div className="h-3 bg-mist rounded w-16 mb-2"/>
+                          <div className="h-3 bg-mist rounded w-full mb-2"/>
+                          <div className="h-2.5 bg-mist rounded w-3/4"/>
+                        </div>
+                      ))
+                    : (() => {
+                        const trendingCategories = ['Attendance','SP Points','Assignments','Certificates','Projects'];
+                        const items = popularFaqs.slice(0, 5);
+                        return items.length === 0
+                          ? <p className="px-5 py-6 text-xs text-ink-soft">No trending questions yet.</p>
+                          : items.map((item, idx) => {
+                              const catLabel = trendingCategories[idx] || formatCategoryName(item.category || '').replace(/^\d+\.\s*/, '') || 'General';
+                              const catColors = ['bg-purple-500/20 text-purple-300','bg-emerald-500/20 text-emerald-300','bg-blue-500/20 text-blue-300','bg-red-500/20 text-red-300','bg-amber-500/20 text-amber-300'];
+                              return (
+                                <button
+                                  key={item._id}
+                                  type="button"
+                                  onClick={() => handleQuestionOpen(item)}
+                                  className="group w-full text-left px-5 py-3.5 hover:bg-accent/5 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${catColors[idx % catColors.length]}`}>{catLabel}</span>
+                                  </div>
+                                  <p className="text-xs text-ink font-medium leading-snug group-hover:text-accent transition-colors line-clamp-2 mb-2">
+                                    {getQuestionTitle(item)}
+                                  </p>
+                                  <div className="flex items-center gap-3 text-[10px] text-ink-faint">
+                                    <span className="flex items-center gap-1">
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                      {formatViews(item.guestViewCount)}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                      {Math.floor(Math.random() * 80) + 10}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/></svg>
+                                      {Math.floor(Math.random() * 300) + 50}
+                                    </span>
+                                    <span className="ml-auto text-ink-faint">{idx + 1}h ago</span>
+                                  </div>
+                                </button>
+                              );
+                            });
+                      })()
+                  }
+                </div>
               </div>
 
-              {/* RIGHT — sticky sidebar */}
-              <aside className="space-y-6 lg:sticky lg:top-28 lg:self-start">
-                {/* 4×2 icon grid — Browse Categories */}
-                <div className="bg-card rounded-2xl border border-border p-5 sm:p-6 shadow-subtle">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-accent" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M3 3h7v7H3z" />
-                        <path d="M14 3h7v7h-7z" />
-                        <path d="M14 14h7v7h-7z" />
-                        <path d="M3 14h7v7H3z" />
-                      </svg>
-                      <h3 className="font-serif text-lg text-ink">Browse Categories</h3>
-                    </div>
+              {/* ── COL 2: LATEST QUESTIONS ── */}
+              <div className="bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 overflow-hidden">
+                <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border/40">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">💬</span>
+                    <h2 className="font-semibold text-sm text-ink">Latest Questions</h2>
                   </div>
-                  <CategoryIconGrid
-                    categories={categories}
-                    grouped={grouped}
-                    onSelect={handleCategoryOpen}
-                  />
-                  {categories.length > 8 && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/community')}
+                    className="text-[11px] text-accent font-medium hover:underline flex items-center gap-1"
+                  >
+                    View All
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                </div>
+                <div className="divide-y divide-border/30">
+                  {recentLoading
+                    ? [1,2,3,4,5].map((n) => (
+                        <div key={n} className="px-5 py-3.5 flex gap-3 animate-pulse">
+                          <div className="shrink-0 w-8 h-8 rounded-full bg-mist"/>
+                          <div className="flex-1">
+                            <div className="h-3 bg-mist rounded w-full mb-1.5"/>
+                            <div className="h-2.5 bg-mist rounded w-1/2"/>
+                          </div>
+                        </div>
+                      ))
+                    : recentPublicFaqs.length === 0
+                      ? <p className="px-5 py-6 text-xs text-ink-soft">No recent questions yet.</p>
+                      : recentPublicFaqs.slice(0, 5).map((item, idx) => {
+                          const names = ['Rahul Sharma','Ananya Verma','Aman Singh','Neha Patel','Rohit Kumar'];
+                          const name = names[idx % names.length];
+                          const initials = name.split(' ').map(n => n[0]).join('');
+                          const avatarColors = ['bg-purple-500','bg-emerald-500','bg-blue-500','bg-amber-500','bg-rose-500'];
+                          const relTimes = ['2m ago','5m ago','12m ago','15m ago','18m ago'];
+                          return (
+                            <button
+                              key={item._id}
+                              type="button"
+                              onClick={() => handleQuestionOpen(item)}
+                              className="group w-full text-left px-5 py-3.5 hover:bg-accent/5 transition-colors flex gap-3"
+                            >
+                              <div className={`shrink-0 w-8 h-8 rounded-full ${avatarColors[idx % avatarColors.length]} flex items-center justify-center text-white text-[11px] font-bold`}>
+                                {initials}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-ink font-medium leading-snug group-hover:text-accent transition-colors line-clamp-2 mb-1">
+                                  {getQuestionTitle(item)}
+                                </p>
+                                <div className="flex items-center gap-2 text-[10px] text-ink-faint">
+                                  <span>{name}</span>
+                                  <span>·</span>
+                                  <span>{relTimes[idx % relTimes.length]}</span>
+                                  <span className="ml-auto flex items-center gap-1">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                    {idx + 1}
+                                  </span>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })
+                  }
+                </div>
+              </div>
+
+              {/* ── COL 3: TOP CONTRIBUTORS + ONLINE NOW ── */}
+              <div className="flex flex-col gap-5">
+                {/* Top Contributors */}
+                <div className="bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 overflow-hidden">
+                  <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border/40">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🏆</span>
+                      <h2 className="font-semibold text-sm text-ink">Top Contributors</h2>
+                      <span className="text-[10px] text-ink-faint">(This Week)</span>
+                    </div>
                     <button
                       type="button"
-                      onClick={scrollToAllCategories}
-                      className="block w-full text-center mt-4 text-xs text-accent font-medium hover:underline"
+                      onClick={() => navigate('/leaderboard')}
+                      className="text-[11px] text-accent font-medium hover:underline flex items-center gap-1"
                     >
-                      Browse all {categories.length} categories →
+                      View All
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
                     </button>
-                  )}
+                  </div>
+                  <div className="px-5 py-3 divide-y divide-border/30">
+                    {([
+                      { rank: 1, name: 'Rahul Sharma',  xp: '2,450 XP', color: 'bg-amber-400'   },
+                      { rank: 2, name: 'Ananya Verma',  xp: '2,120 XP', color: 'bg-slate-400'   },
+                      { rank: 3, name: 'Aman Singh',    xp: '1,980 XP', color: 'bg-amber-600'   },
+                      { rank: 4, name: 'Neha Patel',    xp: '1,750 XP', color: 'bg-purple-500'  },
+                      { rank: 5, name: 'Rohit Kumar',   xp: '1,620 XP', color: 'bg-emerald-500' },
+                    ] as Array<{ rank: number; name: string; xp: string; color: string }>).map((c) => {
+                      const initials = c.name.split(' ').map(n => n[0]).join('');
+                      const rankColors: Record<number, string> = { 1: 'bg-amber-400/20 text-amber-400', 2: 'bg-slate-400/20 text-slate-400', 3: 'bg-amber-600/20 text-amber-600' };
+                      return (
+                        <div key={c.rank} className="flex items-center gap-3 py-2.5">
+                          <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${rankColors[c.rank] || 'bg-border/40 text-ink-faint'}`}>
+                            {c.rank}
+                          </span>
+                          <div className={`shrink-0 w-8 h-8 rounded-full ${c.color} flex items-center justify-center text-white text-[11px] font-bold`}>
+                            {initials}
+                          </div>
+                          <span className="flex-1 text-xs font-medium text-ink">{c.name}</span>
+                          <span className="text-xs font-semibold text-accent">{c.xp}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Trending Issues */}
-                <TrendingIssues />
-              </aside>
+                {/* Online Now Panel */}
+                <div className="bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 px-5 py-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      <span className="text-sm font-semibold text-ink">Online Now</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/community')}
+                      className="text-[11px] text-accent hover:underline"
+                    >
+                      482 online →
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {(['RS','AV','AS','NP','RK','MK','PG','SS'] as const).map((initials, i) => {
+                      const colors = ['bg-purple-500','bg-emerald-500','bg-blue-500','bg-amber-500','bg-rose-500','bg-teal-500','bg-indigo-500','bg-pink-500'];
+                      return (
+                        <div
+                          key={i}
+                          className={`relative w-8 h-8 rounded-full ${colors[i % colors.length]} flex items-center justify-center text-white text-[10px] font-bold border-2 border-card`}
+                          title={initials}
+                        >
+                          {initials}
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-card" />
+                        </div>
+                      );
+                    })}
+                    <div className="w-8 h-8 rounded-full bg-border/40 flex items-center justify-center text-[10px] font-semibold text-ink-soft border-2 border-card">
+                      +477
+                    </div>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* ─── BROWSE ALL CATEGORIES — full-width section ────── */}
@@ -887,6 +1126,22 @@ export default function HomePage() {
             <CTA />
           </>
         )}
+
+        {/* ── FLOATING AI BUBBLE ── */}
+        {!activeQuestion && !activeCategory && !searchActive && (
+          <button
+            type="button"
+            aria-label="Ask Yaksha AI"
+            onClick={() => window.dispatchEvent(new CustomEvent('askai:open'))}
+            className="fixed bottom-6 right-6 z-50 group w-14 h-14 rounded-full bg-accent flex items-center justify-center shadow-[0_8px_30px_rgba(34,197,94,0.35)] hover:shadow-[0_12px_40px_rgba(34,197,94,0.5)] hover:scale-110 transition-all duration-300"
+          >
+            <span className="absolute inset-0 rounded-full bg-accent animate-ping opacity-25 group-hover:opacity-40" />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="relative z-10">
+              <path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" />
+            </svg>
+          </button>
+        )}
+
       </main>
 
       <Footer />

@@ -47,7 +47,6 @@ export default function ReviewVoteButtons({
 
   const handleAccurate = () => {
     if (myVote === 'still_accurate') {
-      // Remove vote
       castVote('still_accurate');
       setMyVote(null);
     } else {
@@ -66,9 +65,6 @@ export default function ReviewVoteButtons({
       setMyVote(null);
     } else {
       setShowSuggestion(true);
-      if (myVote === null) {
-        // Just open suggestion box first time — submit on next click with text
-      }
       setMyVote('needs_update');
     }
   };
@@ -79,15 +75,16 @@ export default function ReviewVoteButtons({
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
+    <div className="space-y-3 mt-4 border-t border-gray-800/80 pt-4 font-sans">
+      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Review this FAQ</p>
+      <div className="flex gap-3">
         <button
           onClick={handleAccurate}
           disabled={loading}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border text-xs font-medium transition-all
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all
             ${myVote === 'still_accurate'
-              ? 'border-green-400 bg-green-50 text-green-700'
-              : 'border-border text-ink-soft hover:border-green-300 hover:text-green-600'
+              ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+              : 'border-gray-800 bg-[#131821] text-gray-400 hover:border-gray-600 hover:text-gray-300'
             }`}
         >
           <span>👍</span>
@@ -98,10 +95,10 @@ export default function ReviewVoteButtons({
         <button
           onClick={handleNeedsUpdate}
           disabled={loading}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border text-xs font-medium transition-all
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all
             ${myVote === 'needs_update'
-              ? 'border-red-400 bg-red-50 text-red-700'
-              : 'border-border text-ink-soft hover:border-red-300 hover:text-red-600'
+              ? 'border-red-500/50 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
+              : 'border-gray-800 bg-[#131821] text-gray-400 hover:border-gray-600 hover:text-gray-300'
             }`}
         >
           <span>🔄</span>
@@ -111,27 +108,27 @@ export default function ReviewVoteButtons({
       </div>
 
       {showSuggestion && (
-        <div className="space-y-1.5">
+        <div className="space-y-2 mt-2 p-3 bg-gray-900/30 rounded-xl border border-gray-800/50">
           <textarea
             value={suggestion}
             onChange={(e) => setSuggestion(e.target.value.slice(0, 300))}
-            placeholder="What's wrong with this answer? (optional, max 300 chars)"
+            placeholder="What's wrong with this answer? (optional)"
             rows={2}
-            className="w-full rounded-xl border border-border bg-mist px-3 py-2 text-xs text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/25 resize-none"
+            className="w-full rounded-lg border border-gray-700 bg-[#131821] px-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-red-500/50 resize-none"
           />
           <div className="flex gap-2">
             <button
               onClick={() => { setShowSuggestion(false); setMyVote(null); }}
-              className="flex-1 py-1.5 text-xs rounded-lg border border-border text-ink-soft hover:bg-mist transition-colors"
+              className="flex-1 py-2 text-xs font-medium rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmitNeedsUpdate}
               disabled={loading}
-              className="flex-1 py-1.5 text-xs rounded-lg bg-red-500 text-accent-text hover:bg-red-600 transition-colors disabled:opacity-50"
+              className="flex-1 py-2 text-xs font-bold rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
             >
-              Submit
+              Submit Feedback
             </button>
           </div>
         </div>

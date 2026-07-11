@@ -7,9 +7,9 @@ import { useBatch } from '../../context/BatchContext';
 /**
  * "From Zoom Meetings" — surfaces the project's actual goal on the home page.
  *
- * Renders only when there is at least one Zoom-derived FAQ in the system.
+ * Renders only when there is at least one Zoom-derived FAQ in the system.[cite: 13]
  * If no meetings have been processed yet, the whole section is hidden so
- * the home page still feels calm and useful.
+ * the home page still feels calm and useful.[cite: 13]
  */
 
 function formatRelativeTime(dateStr: string): string {
@@ -25,7 +25,7 @@ function formatRelativeTime(dateStr: string): string {
 
 function VideoIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="23 7 16 12 23 17 23 7" />
       <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
     </svg>
@@ -82,14 +82,14 @@ export default function FromMeetings() {
   // Skeleton while loading
   if (loading) {
     return (
-      <section className="mt-12">
+      <section className="mt-12 font-sans text-white">
         <div className="flex items-center gap-2 mb-4">
-          <div className="h-5 w-5 bg-mist rounded animate-pulse" />
-          <div className="h-5 w-56 bg-mist rounded animate-pulse" />
+          <div className="h-5 w-5 bg-gray-800 rounded animate-pulse" />
+          <div className="h-5 w-56 bg-gray-800 rounded animate-pulse" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-[160px] rounded-2xl border border-border bg-card/70 animate-pulse" />
+            <div key={i} className="h-[160px] rounded-xl border border-gray-800/50 bg-[#131821]/50 animate-pulse" />
           ))}
         </div>
       </section>
@@ -97,67 +97,67 @@ export default function FromMeetings() {
   }
 
   return (
-    <section className="mt-12">
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+    <section className="mt-12 font-sans text-white">
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
         <div>
-          <div className="flex items-center gap-2 text-ink-faint">
+          <div className="flex items-center gap-2 text-emerald-500 mb-2">
             <VideoIcon />
-            <p className="text-[11px] font-semibold uppercase tracking-wider">From Zoom Meetings</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider">From Zoom Meetings</p>
           </div>
-          <h2 className="mt-1 font-serif text-xl sm:text-2xl text-ink leading-snug">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white leading-snug">
             {hasData
-              ? (<>Questions interns asked... <span className="text-accent">and we solved in Zoom.</span></>)
+              ? (<>Questions interns asked... <span className="text-emerald-500">and we solved in Zoom.</span></>)
               : 'Doubts answered in your team\'s Zoom sessions, turned into FAQs'}
           </h2>
-          <p className="mt-1 text-xs sm:text-sm text-ink-soft max-w-xl">
+          <p className="mt-2 text-sm text-gray-400 max-w-xl">
             {hasData
               ? 'Auto-extracted from intern sessions. We listen, transcribe, and turn answers into FAQs.'
               : 'Admins connect Zoom once. New meetings get transcribed, questions get extracted, and answers show up here for everyone to search.'}
           </p>
         </div>
+        
         {anyZoomActivity && (
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-ink-soft bg-card border border-border rounded-lg px-2.5 py-1">
-              {stats!.meetingsProcessed} meetings
+            <span className="text-[11px] font-medium text-gray-400 bg-[#131821] border border-gray-800/80 rounded-lg px-3 py-1.5 shadow-sm">
+              <span className="text-emerald-400 mr-1">{stats!.meetingsProcessed}</span> meetings
             </span>
-            <span className="text-[11px] text-ink-soft bg-card border border-border rounded-lg px-2.5 py-1">
-              {stats!.faqsPromoted} FAQs added
+            <span className="text-[11px] font-medium text-gray-400 bg-[#131821] border border-gray-800/80 rounded-lg px-3 py-1.5 shadow-sm">
+              <span className="text-emerald-400 mr-1">{stats!.faqsPromoted}</span> FAQs added
             </span>
           </div>
         )}
       </div>
 
       {hasData ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {faqs.map((faq) => (
             <article
               key={faq._id}
               onClick={() => navigate(`/faq/${faq._id}`)}
-              className="group cursor-pointer rounded-2xl border border-border bg-card hover:border-accent/30 hover:shadow-subtle transition-all p-4 flex flex-col"
+              className="group cursor-pointer rounded-xl border border-gray-800/80 bg-[#131821] hover:border-emerald-500/50 hover:bg-gray-800/20 transition-all duration-300 p-5 flex flex-col shadow-lg shadow-black/20"
             >
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-success-light text-success text-[10px] font-semibold uppercase tracking-wider">
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="3"/></svg>
-                  FROM MEETING
+              <div className="flex items-center gap-2 mb-4">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  MEETING
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#2D8CFF]/10 text-[#2D8CFF] text-[10px] font-semibold uppercase tracking-wider">
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="3"/></svg>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
                   ZOOM
                 </span>
               </div>
-              <h3 className="text-sm font-semibold text-ink leading-snug line-clamp-2 group-hover:text-accent transition-colors">
+              <h3 className="text-base font-semibold text-gray-200 leading-snug line-clamp-2 group-hover:text-emerald-400 transition-colors">
                 {faq.question}
               </h3>
               {faq.answer && (
-                <p className="mt-2 text-xs text-ink-soft leading-relaxed line-clamp-3">
+                <p className="mt-2 text-xs text-gray-400 leading-relaxed line-clamp-3">
                   {faq.answer}
                 </p>
               )}
-              <div className="mt-auto pt-3 flex items-center justify-between text-[10px] text-ink-faint">
-                <span>
+              <div className="mt-auto pt-4 flex items-center justify-between text-[11px] text-gray-500 border-t border-gray-800/50">
+                <span className="truncate pr-2">
                   {faq.sourceMeetingTopic ? `From: ${faq.sourceMeetingTopic}` : formatRelativeTime(faq.createdAt)}
                 </span>
-                <span className="inline-flex items-center gap-1 text-ink-soft font-medium group-hover:text-accent transition-colors">
+                <span className="inline-flex items-center gap-1 font-medium text-gray-400 group-hover:text-emerald-400 transition-colors whitespace-nowrap">
                   Read <ArrowRightIcon />
                 </span>
               </div>
@@ -165,9 +165,8 @@ export default function FromMeetings() {
           ))}
         </div>
       ) : (
-        // Empty state — explains HOW the goal works, even when no data yet.
-        // This is the project's main value prop, so it should never disappear.
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        // Empty state
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           <HowItWorksStep
             n="1"
             title="Connect Zoom"
@@ -191,14 +190,14 @@ export default function FromMeetings() {
 
 function HowItWorksStep({ n, title, body }: { n: string; title: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#2D8CFF]/10 text-[#2D8CFF] text-xs font-semibold">
+    <div className="rounded-xl border border-gray-800/80 bg-[#131821] p-6 shadow-lg shadow-black/20 group hover:border-emerald-500/30 transition-colors">
+      <div className="flex items-center gap-3 mb-3">
+        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-bold group-hover:bg-emerald-500/20 transition-colors">
           {n}
         </span>
-        <h3 className="text-sm font-semibold text-ink">{title}</h3>
+        <h3 className="text-sm font-bold text-gray-200">{title}</h3>
       </div>
-      <p className="text-xs text-ink-soft leading-relaxed">{body}</p>
+      <p className="text-xs text-gray-400 leading-relaxed">{body}</p>
     </div>
   );
 }

@@ -50,10 +50,10 @@ export default function FlagOutdatedButton({ faqId, reviewStatus, onFlagged }: F
         onClick={openModal}
         disabled={isAlreadyUnderReview}
         title={isAlreadyUnderReview ? 'This FAQ is already under review' : 'Flag as outdated'}
-        className={`text-xs px-2 py-1 rounded border transition-colors
+        className={`text-xs px-3 py-1.5 rounded-md border transition-colors flex items-center gap-1.5
           ${isAlreadyUnderReview
-            ? 'border-border text-ink-faint cursor-not-allowed'
-            : 'border-border text-ink-soft hover:border-orange-300 hover:text-orange-600'
+            ? 'border-gray-800 text-gray-600 cursor-not-allowed bg-gray-900/30'
+            : 'border-gray-700 text-gray-400 hover:border-orange-500/50 hover:text-orange-400 hover:bg-orange-500/10'
           }`}
       >
         🚩 {isAlreadyUnderReview ? 'Under review' : 'Flag outdated'}
@@ -63,38 +63,38 @@ export default function FlagOutdatedButton({ faqId, reviewStatus, onFlagged }: F
         <dialog
           ref={dialogRef}
           onClose={() => setShowModal(false)}
-          className="m-auto rounded-2xl border border-border shadow-2xl bg-card p-0 backdrop:bg-ink/30 backdrop:backdrop-blur-sm"
+          className="m-auto rounded-xl border border-gray-800 shadow-2xl shadow-black/50 bg-[#131821] p-0 backdrop:bg-[#0B0F15]/80 backdrop:backdrop-blur-sm text-white"
         >
-          <form onSubmit={handleSubmit} className="p-6 space-y-4 min-w-72">
-            <h3 className="text-sm font-semibold text-ink">Flag as Outdated</h3>
-            <p className="text-xs text-ink-soft">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4 min-w-[320px]">
+            <h3 className="text-base font-bold text-gray-200">Flag as Outdated</h3>
+            <p className="text-xs text-gray-400">
               Why do you think this answer needs updating?
-              <span className="block mt-1 text-ink-faint">(optional — max 200 chars)</span>
+              <span className="block mt-1 text-gray-500">(optional — max 200 chars)</span>
             </p>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value.slice(0, 200))}
               placeholder="E.g. The process changed last week..."
               rows={3}
-              className="w-full rounded-xl border border-border bg-mist px-3 py-2 text-sm text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/25 resize-none"
+              className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 resize-none"
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => { dialogRef.current?.close(); setShowModal(false); }}
-                className="px-4 py-2 text-xs rounded-xl border border-border text-ink-soft hover:bg-mist transition-colors"
+                className="px-4 py-2 text-xs font-medium rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 text-xs rounded-xl bg-orange-500 text-accent-text hover:bg-orange-600 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-50"
               >
                 {loading ? 'Sending…' : 'Submit Flag'}
               </button>
             </div>
-            {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+            {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
           </form>
         </dialog>
       )}

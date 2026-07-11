@@ -1,7 +1,7 @@
 import React from 'react';
 import { FAQItem, getQuestionTitle, getAnswerText, formatDate, getCategoryIcon, formatCategoryName, TrustBadge } from './faqUtils';
 import ReportFAQButton from './ReportFAQButton';
-import FreshnessBadge from '../faq/FreshnessBadge';
+import FreshnessBadge from './FreshnessBadge'; // Adjusted path if needed
 
 interface QuestionDetailProps {
   item: FAQItem;
@@ -16,61 +16,80 @@ export default function QuestionDetail({ item, relatedItems, onBack, onSelectRel
   const prefix = item.questionNumber ? `${item.questionNumber}. ` : '';
   const answer = getAnswerText(item);
   const metaDate = formatDate(item?.updatedAt || item?.createdAt);
-  const sourceLabel = item?.source ? (item.source === 'faq' ? 'FAQ' : 'Community') : '';
+  const sourceLabel = item?.source ? (item.source === 'faq' ? 'System FAQ' : 'Community') : '';
   const trustLevel = item?.trustLevel;
+  
+  // Highlight extraction logic
   const highlight = answer ? answer.split('. ').slice(0, 1).join('. ') : '';
 
   return (
-    <div className="grid lg:grid-cols-[260px_1fr] gap-6">
-      <aside className="hidden lg:flex flex-col gap-4">
-        <div className="rounded-2xl border border-border/70 bg-card/80 p-4">
-          <p className="text-xs font-semibold text-ink-faint uppercase tracking-wide">Category</p>
-          <div className="mt-3 flex items-center gap-2 text-sm text-ink">
-            <span className="w-8 h-8 rounded-xl bg-mist flex items-center justify-center text-ink-faint">
+    <div className="grid lg:grid-cols-[280px_1fr] gap-6 text-white font-sans max-w-7xl mx-auto p-6">
+      
+      {/* Left Sidebar (Desktop Only) */}
+      <aside className="hidden lg:flex flex-col gap-6">
+        
+        {/* Category Card */}
+        <div className="rounded-xl border border-gray-800/80 bg-[#131821] p-5">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Category</p>
+          <div className="flex items-center gap-3 text-sm text-gray-300">
+            <span className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
               {getCategoryIcon(item?.category || '')}
             </span>
-            <span>{item?.categoryNumber ? `${item.categoryNumber}. ` : ''}{formatCategoryName(item?.category || 'General')}</span>
+            <span className="font-medium">
+              {item?.categoryNumber ? `${item.categoryNumber}. ` : ''}{formatCategoryName(item?.category || 'General')}
+            </span>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/70 bg-card/80 p-4">
-          <p className="text-xs font-semibold text-ink-faint uppercase tracking-wide">Related questions</p>
-          <div className="mt-3 space-y-2">
+        {/* Related Questions Sidebar */}
+        <div className="rounded-xl border border-gray-800/80 bg-[#131821] p-5">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Related questions</p>
+          <div className="space-y-3">
             {relatedItems.length === 0 && (
-              <p className="text-xs text-ink-soft">No related questions yet.</p>
+              <p className="text-xs text-gray-500">No related questions yet.</p>
             )}
             {relatedItems.map((rel) => (
               <button
                 key={rel._id}
                 onClick={() => onSelectRelated(rel)}
-                className="w-full text-left text-xs text-ink hover:text-accent transition-colors line-clamp-2"
+                className="w-full text-left text-sm text-gray-400 hover:text-emerald-400 transition-colors line-clamp-2 leading-snug group"
               >
-                {rel.questionNumber ? `${rel.questionNumber}. ` : ''}{getQuestionTitle(rel)}
+                <span className="text-gray-600 mr-1 group-hover:text-emerald-500/50 transition-colors">
+                  {rel.questionNumber ? `${rel.questionNumber}. ` : ''}
+                </span>
+                {getQuestionTitle(rel)}
               </button>
             ))}
           </div>
         </div>
       </aside>
 
-      <div className="bg-card rounded-2xl border border-border shadow-subtle p-6">
+      {/* Main Content Area */}
+      <div className="bg-[#131821] rounded-xl border border-gray-800/80 shadow-2xl p-6 md:p-8">
+        
+        {/* Back Button */}
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-ink-soft hover:text-ink transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-emerald-400 transition-colors mb-6 group"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="transform group-hover:-translate-x-1 transition-transform" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          {backLabel || 'Back'}
+          {backLabel || 'Back to FAQs'}
         </button>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        {/* Metadata Badges */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
           {sourceLabel && (
-            <span className="px-2.5 py-1 rounded-full bg-mist text-[11px] font-semibold text-ink-soft">
+            <span className="px-3 py-1 rounded-md bg-gray-800/50 border border-gray-700/50 text-xs font-medium text-gray-300">
               {sourceLabel}
             </span>
           )}
           {metaDate && (
-            <span className="text-[11px] text-ink-faint">Updated {metaDate}</span>
+            <span className="text-xs text-gray-500 flex items-center gap-1.5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              Updated {metaDate}
+            </span>
           )}
           {item?.source === 'faq' && (
             <FreshnessBadge
@@ -82,36 +101,46 @@ export default function QuestionDetail({ item, relatedItems, onBack, onSelectRel
           )}
         </div>
 
-        <h2 className="mt-4 text-xl font-semibold text-ink leading-snug">
-          <span className="text-ink-faint mr-2 tabular-nums">{prefix}</span>
+        {/* Question Title */}
+        <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-6 flex flex-wrap items-center gap-3">
+          <span className="text-emerald-500 shrink-0">{prefix}</span>
           {title}
           {trustLevel && <TrustBadge level={trustLevel} />}
-        </h2>
+        </h1>
 
-        {answer ? (
-          <div className="mt-4 space-y-4 text-sm text-ink-soft leading-relaxed whitespace-pre-wrap">
-            {answer}
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-ink-soft">No answer available yet.</p>
-        )}
-
+        {/* Key Takeaway Highlight */}
         {highlight && (
-          <div className="mt-5 rounded-xl border border-accent/15 bg-accent-light p-4">
-            <p className="text-[11px] font-semibold text-accent uppercase tracking-wide">Key takeaway</p>
-            <p className="mt-2 text-sm text-ink/70">{highlight}.</p>
+          <div className="mb-8 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 relative overflow-hidden">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500"></div>
+            <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              Key takeaway
+            </p>
+            <p className="text-base text-gray-300 font-medium leading-relaxed">{highlight}.</p>
           </div>
         )}
 
+        {/* Full Answer Body */}
+        <div className="prose prose-invert prose-emerald max-w-none">
+          {answer ? (
+            <div className="text-base text-gray-400 leading-relaxed whitespace-pre-wrap">
+              {answer}
+            </div>
+          ) : (
+            <p className="text-base text-gray-500 italic">No answer available yet.</p>
+          )}
+        </div>
+
+        {/* Mobile Related Questions (Hidden on Desktop) */}
         {relatedItems.length > 0 && (
-          <div className="mt-6">
-            <p className="text-[11px] font-semibold text-ink-faint uppercase tracking-wide">Related questions</p>
-            <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-10 lg:hidden border-t border-gray-800/80 pt-6">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Related questions</p>
+            <div className="flex flex-col gap-2">
               {relatedItems.map((rel) => (
                 <button
                   key={rel._id}
                   onClick={() => onSelectRelated(rel)}
-                  className="px-3 py-1.5 rounded-full border border-border/70 bg-card text-xs text-ink hover:border-accent/50 hover:text-accent transition-colors"
+                  className="w-full text-left p-3 rounded-lg border border-gray-800/50 bg-gray-900/30 text-sm text-gray-400 hover:border-emerald-500/30 hover:text-emerald-400 transition-colors"
                 >
                   {rel.questionNumber ? `${rel.questionNumber}. ` : ''}{getQuestionTitle(rel)}
                 </button>
@@ -120,8 +149,18 @@ export default function QuestionDetail({ item, relatedItems, onBack, onSelectRel
           </div>
         )}
 
-        {/* Report FAQ */}
-        <ReportFAQButton item={item} />
+        {/* Action Buttons (Report etc.) */}
+        <div className="mt-10 pt-6 border-t border-gray-800/80 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* Thumbs up/down mockup */}
+            <span className="text-xs text-gray-500 mr-2">Was this helpful?</span>
+            <button className="w-8 h-8 rounded border border-gray-700 flex items-center justify-center text-gray-400 hover:border-emerald-500 hover:text-emerald-500 transition-colors">👍</button>
+            <button className="w-8 h-8 rounded border border-gray-700 flex items-center justify-center text-gray-400 hover:border-red-500 hover:text-red-500 transition-colors">👎</button>
+          </div>
+          
+          <ReportFAQButton item={item} />
+        </div>
+        
       </div>
     </div>
   );
