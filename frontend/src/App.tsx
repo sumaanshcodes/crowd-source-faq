@@ -27,6 +27,9 @@ const WelcomePackagePage = lazy(() => import('./pages/WelcomePackagePage'));
 const Yaksha2026_27ProgramPage = lazy(() => import('./pages/Yaksha2026_27ProgramPage'));
 const ProgramPortalPage = lazy(() => import('./pages/ProgramPortalPage'));
 const ProgramPage = lazy(() => import('./pages/ProgramPage'));
+const AchievementsPage = lazy(() => import('./pages/AchievementsPage'));
+const KnowledgeSprintPage = lazy(() => import('./pages/KnowledgeSprintPage'));
+const TopicRadarPage = lazy(() => import('./pages/TopicRadarPage'));
 
 // Admin pages
 // v1.68 — AdminLogin page is gone. The single global AuthModal
@@ -182,6 +185,29 @@ function AppRoutes() {
               </AccountRoute>
             }
           />
+          <Route
+            path="/account/achievements"
+            element={
+              <AccountRoute>
+                <AchievementsPage />
+              </AccountRoute>
+            }
+          />
+          {/* Bug fix: Navbar links to /welcome (WelcomePackagePage was
+              imported but never routed), so the link silently bounced
+              to "/" via the catch-all. Wrapped in AccountRoute since
+              the page reads user.orientationCompleted /
+              projectSelectionLocked and only makes sense signed in. */}
+          <Route
+            path="/welcome"
+            element={
+              <AccountRoute>
+                <WelcomePackagePage />
+              </AccountRoute>
+            }
+          />
+          <Route path="/knowledge-sprint" element={<KnowledgeSprintPage />} />
+          <Route path="/topic-radar" element={<TopicRadarPage />} />
         </Route>
 
         {/* Admin Panel dedicated routes (guarded by AdminRoute) */}
