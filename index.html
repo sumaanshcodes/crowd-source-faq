@@ -25,6 +25,7 @@
         <a href="#" data-target="community-queries" id="nav-community-queries" style="display: none;"><span class="icon">🤝</span> <span class="nav-text">Help Community</span></a>
         <a href="#" data-target="sp-history" id="nav-sp-history" style="display: none;"><span class="icon">✨</span> <span class="nav-text">Spurti Points (<span id="user-sp-count">0</span>)</span></a>
         <a href="#" data-target="leaderboard" id="nav-leaderboard" style="display: none;"><span class="icon">🏆</span> <span class="nav-text">Leaderboard</span></a>
+        <a href="#" data-target="attendance" id="nav-attendance" style="display: none;"><span class="icon">📅</span> <span class="nav-text">Attendance</span></a>
         <a href="#" data-target="admin" id="nav-admin"><span class="icon">🔒</span> <span class="nav-text">Admin</span></a>
       </nav>
     </aside>
@@ -273,28 +274,73 @@
           <h2>🏆 Cohort Leaderboard</h2>
           <p class="subtitle" id="leaderboard-rank-banner">See where you stand among your peers!</p>
           
-          <div class="glass-card full-width-card mt-2">
+          <div class="glass-card full-width-card mt-2" id="your-sp-activity-section">
             <h3 class="color-heading-2">Your SP Activity</h3>
             <div id="sp-graph-container" class="graph-container mt-1">
               <!-- Dynamically populated by JS -->
             </div>
           </div>
+          
 
-          <div class="glass-card full-width-card mt-2">
-            <h3 class="color-heading-3">Top Students</h3>
-            <div class="table-container mt-1">
-              <table class="users-table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Name</th>
-                    <th>Total SP</th>
-                  </tr>
-                </thead>
-                <tbody id="leaderboard-table-body">
+
+          <div class="glass-card full-width-card mt-2 p-0" style="overflow: hidden;">
+            <div class="leaderboard-layout">
+              <!-- Left side: Podium -->
+              <div class="podium-side">
+                <div class="podium-container" id="leaderboard-podium-container">
                   <!-- Dynamically populated -->
-                </tbody>
-              </table>
+                </div>
+              </div>
+              
+              <!-- Right side: List -->
+              <div class="list-side">
+                <div class="table-container list-container" style="padding: 1.5rem; max-height: 400px; overflow-y: auto;">
+                  <table class="users-table leaderboard-list-table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Student</th>
+                        <th>SP</th>
+                      </tr>
+                    </thead>
+                    <tbody id="leaderboard-table-body">
+                      <!-- Dynamically populated -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Attendance Section -->
+        <section id="attendance" class="content-section">
+          <h2>📅 Attendance Tracker</h2>
+          <p class="subtitle">Keep track of your daily logins and maintain your streak!</p>
+          <div class="glass-card full-width-card mt-2" id="your-attendance-section" style="padding: 2rem;">
+            <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+              <button id="calendar-prev-btn" class="icon-btn" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 40px; height: 40px; font-size: 1.2rem;">◀</button>
+              <div style="text-align: center;">
+                <h3 class="color-heading-2" id="calendar-month-title" style="font-size: 1.8rem; margin: 0;">Month Year</h3>
+                <div class="streak-badge mt-1" id="current-streak-badge" style="font-size: 1rem;">🔥 0 Day Streak</div>
+              </div>
+              <button id="calendar-next-btn" class="icon-btn" style="background: rgba(255,255,255,0.1); border-radius: 50%; width: 40px; height: 40px; font-size: 1.2rem;">▶</button>
+            </div>
+            
+            <div class="calendar-grid">
+              <!-- Weekday Headers -->
+              <div class="calendar-weekday">Sun</div>
+              <div class="calendar-weekday">Mon</div>
+              <div class="calendar-weekday">Tue</div>
+              <div class="calendar-weekday">Wed</div>
+              <div class="calendar-weekday">Thu</div>
+              <div class="calendar-weekday">Fri</div>
+              <div class="calendar-weekday">Sat</div>
+              
+              <!-- Days Container (Dynamically populated) -->
+            </div>
+            <div id="attendance-tracker-container" class="calendar-days-grid mt-1">
+              <!-- Dynamically populated by JS -->
             </div>
           </div>
         </section>

@@ -16,6 +16,7 @@ interface User {
   lastSignIn: string;
   sp?: number;
   spHistory?: SPHistoryEntry[];
+  attendance?: string[];
 }
 
 interface Admin {
@@ -141,6 +142,39 @@ users.forEach(user => {
   }
 });
 if (stateChanged) saveState();
+
+function seedDummyUsers() {
+  if (users.length < 7) {
+    const generateFakeAttendance = () => {
+      const att = [];
+      const now = new Date();
+      for(let i=14; i>=0; i--) {
+        if(Math.random() > 0.3) {
+          const d = new Date();
+          d.setDate(now.getDate() - i);
+          att.push(d.toLocaleDateString());
+        }
+      }
+      return att;
+    };
+    const dummies = [
+      { name: 'Sarah Chen', email: 'sarah@example.com', password: '123', date: new Date().toLocaleDateString(), status: 'Active', lastSignIn: 'Recently', sp: 150, spHistory: [], attendance: generateFakeAttendance() },
+      { name: 'Alex Johnson', email: 'alex@example.com', password: '123', date: new Date().toLocaleDateString(), status: 'Active', lastSignIn: 'Recently', sp: 120, spHistory: [], attendance: generateFakeAttendance() },
+      { name: 'Maria Garcia', email: 'maria@example.com', password: '123', date: new Date().toLocaleDateString(), status: 'Active', lastSignIn: 'Recently', sp: 90, spHistory: [], attendance: generateFakeAttendance() },
+      { name: 'David Kim', email: 'david@example.com', password: '123', date: new Date().toLocaleDateString(), status: 'Active', lastSignIn: 'Recently', sp: 60, spHistory: [], attendance: generateFakeAttendance() },
+      { name: 'Priya Patel', email: 'priya@example.com', password: '123', date: new Date().toLocaleDateString(), status: 'Active', lastSignIn: 'Recently', sp: 40, spHistory: [], attendance: generateFakeAttendance() },
+      { name: 'James Wilson', email: 'james@example.com', password: '123', date: new Date().toLocaleDateString(), status: 'Active', lastSignIn: 'Recently', sp: 20, spHistory: [], attendance: generateFakeAttendance() },
+      { name: 'Emma Brown', email: 'emma@example.com', password: '123', date: new Date().toLocaleDateString(), status: 'Active', lastSignIn: 'Recently', sp: 10, spHistory: [], attendance: generateFakeAttendance() }
+    ];
+    dummies.forEach(d => {
+      if (!users.some(u => u.email === d.email)) {
+        users.push(d);
+      }
+    });
+    saveState();
+  }
+}
+seedDummyUsers();
 
 document.addEventListener('DOMContentLoaded', () => {
   
@@ -890,36 +924,232 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function getInitials(name: string, email: string) {
+    if (name && name.trim() !== '') {
+      const parts = name.trim().split(' ');
+      if (parts.length > 1 && parts[1].length > 0) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    }
+    return email.substring(0, 2).toUpperCase();
+  }
+
+  let currentCalendarMonth: number = new Date().getMonth();
+  let currentCalendarYear: number = new Date().getFullYear();
+
+  function renderAttendanceTracker() {
+    const attendanceContainer = document.getElementById('attendance-tracker-container');
+    const currentStreakBadge = document.getElementById('current-streak-badge');
+    const attendanceSection = document.getElementById('your-attendance-section');
+    
+    if (!attendanceContainer || !currentStreakBadge || !attendanceSection) return;
+    
+    if (currentAdminEmail) {
+      attendanceSection.style.display = 'none';
+      return;
+    } else {
+      attendanceSection.style.display = 'block';
+    }
+
+    const user = users.find(u => u.email === currentUserEmail);
+    if (!user) return;
+
+    attendanceContainer.innerHTML = '';
+    
+    // Ensure attendance array exists
+    const attendance = user.attendance || [];
+    
+    // Parse start date from user.date (format: MM/DD/YYYY, h:mm:ss A or similar depending on toLocaleString)
+    // To be safe, try to parse it. If it fails, fallback to something reasonable.
+    const startDate = new Date(user.date.split(',')[0]); 
+    if (isNaN(startDate.getTime())) {
+      startDate.setTime(Date.now() - 30 * 24 * 60 * 60 * 1000); // Fallback to 30 days ago
+    }
+    startDate.setHours(0,0,0,0);
+    
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 2); // 2 months duration
+    endDate.setHours(23,59,59,999);
+    
+    // Set Header
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthTitle = document.getElementById('calendar-month-title');
+    if (monthTitle) monthTitle.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
+    
+    // Generate Calendar Grid
+    const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay();
+    const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+    
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    // Fill empty cells for days before the 1st
+    for (let i = 0; i < firstDay; i++) {
+      const emptyNode = document.createElement('div');
+      attendanceContainer.appendChild(emptyNode);
+    }
+    
+    // Fill days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(currentCalendarYear, currentCalendarMonth, day);
+      const dateStr = d.toLocaleDateString();
+      const node = document.createElement('div');
+      node.className = 'calendar-cell';
+      node.textContent = day.toString();
+      
+      // Check if within internship period
+      if (d < startDate || d > endDate) {
+        node.classList.add('blurred-date');
+      } else {
+        if (d > today) {
+          node.classList.add('pending-date');
+        } else {
+          const isPresent = attendance.includes(dateStr);
+          if (isPresent) {
+            node.classList.add('present');
+          } else {
+            node.classList.add('absent');
+          }
+        }
+      }
+      
+      attendanceContainer.appendChild(node);
+    }
+    
+    // Calculate streak properly (start from today, go backwards infinitely)
+    let streakCount = 0;
+    let tempDate = new Date();
+    while (true) {
+      const tStr = tempDate.toLocaleDateString();
+      if (attendance.includes(tStr)) {
+        streakCount++;
+        tempDate.setDate(tempDate.getDate() - 1);
+      } else {
+        // If today is missing, streak is 0, break
+        break;
+      }
+    }
+    
+    currentStreakBadge.innerHTML = `🔥 ${streakCount} Day Streak`;
+    
+    if (streakCount > 0) {
+      currentStreakBadge.style.color = '#f59e0b'; // orange/amber
+      currentStreakBadge.style.background = 'rgba(245, 158, 11, 0.1)';
+      currentStreakBadge.style.border = '1px solid rgba(245, 158, 11, 0.5)';
+    } else {
+      currentStreakBadge.style.color = 'var(--text-secondary)';
+      currentStreakBadge.style.background = 'rgba(255, 255, 255, 0.05)';
+      currentStreakBadge.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+    }
+  }
+
+  // Calendar Event Listeners
+  const prevBtn = document.getElementById('calendar-prev-btn');
+  const nextBtn = document.getElementById('calendar-next-btn');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      currentCalendarMonth--;
+      if (currentCalendarMonth < 0) {
+        currentCalendarMonth = 11;
+        currentCalendarYear--;
+      }
+      renderAttendanceTracker();
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      currentCalendarMonth++;
+      if (currentCalendarMonth > 11) {
+        currentCalendarMonth = 0;
+        currentCalendarYear++;
+      }
+      renderAttendanceTracker();
+    });
+  }
+
   function renderLeaderboard() {
-    if (!leaderboardTableBody || !spGraphContainer || !leaderboardRankBanner) return;
+    const spActivitySection = document.getElementById('your-sp-activity-section');
+    if (spActivitySection) {
+      if (currentAdminEmail) {
+        spActivitySection.style.display = 'none';
+      } else {
+        spActivitySection.style.display = 'block';
+      }
+    }
+
+    const podiumContainer = document.getElementById('leaderboard-podium-container');
+    if (!leaderboardTableBody || !spGraphContainer || !leaderboardRankBanner || !podiumContainer) return;
     
     // Sort active users by SP
     const activeUsers = users.filter(u => u.status === 'Active').sort((a, b) => (b.sp || 0) - (a.sp || 0));
     
     leaderboardTableBody.innerHTML = '';
+    podiumContainer.innerHTML = '';
     let currentUserRank = -1;
     
+    // Find current user rank
     activeUsers.forEach((u, index) => {
-      const rank = index + 1;
-      if (u.email === currentUserEmail) currentUserRank = rank;
-      
-      const tr = document.createElement('tr');
-      if (u.email === currentUserEmail) tr.className = 'highlight-row';
-      tr.innerHTML = `
-        <td style="font-weight: bold; font-size: 1.1rem;">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '#' + rank}</td>
-        <td>${u.name || 'Unknown'} ${u.email === currentUserEmail ? '(You)' : ''}</td>
-        <td style="font-weight: bold;">${u.sp || 0} SP</td>
-      `;
-      leaderboardTableBody.appendChild(tr);
+      if (u.email === currentUserEmail) currentUserRank = index + 1;
     });
-    
+
     if (currentUserRank !== -1) {
       leaderboardRankBanner.textContent = `You are Rank #${currentUserRank} out of ${activeUsers.length} students!`;
     } else {
       leaderboardRankBanner.textContent = `See where you stand among your peers!`;
     }
+
+    const topThree = activeUsers.slice(0, 3);
+    const rest = activeUsers.slice(3);
+
+    // Render Podium
+    topThree.forEach((u, index) => {
+      const rank = index + 1;
+      const initials = getInitials(u.name, u.email);
+      
+      const stepWrapper = document.createElement('div');
+      stepWrapper.className = `podium-step-wrapper rank-${rank}`;
+      
+      let crownHtml = '';
+      if (rank === 1) {
+        crownHtml = `<div class="crown">👑</div>`;
+      }
+
+      stepWrapper.innerHTML = `
+        <div class="podium-avatar-container">
+          ${crownHtml}
+          <div class="podium-avatar">${initials}</div>
+          <div class="podium-name" title="${u.name || u.email}">${u.name || u.email.split('@')[0]}</div>
+          <div class="podium-sp">${u.sp || 0} SP</div>
+        </div>
+        <div class="podium-step">${rank}</div>
+      `;
+      podiumContainer.appendChild(stepWrapper);
+    });
+
+    // Render List (include all ranks)
+    activeUsers.forEach((u, index) => {
+      const rank = index + 1;
+      const initials = getInitials(u.name, u.email);
+      
+      const tr = document.createElement('tr');
+      if (u.email === currentUserEmail) tr.className = 'highlight-row';
+      tr.innerHTML = `
+        <td style="font-weight: bold; font-size: 1.1rem; opacity: 0.8;">
+          ${rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '#' + rank}
+        </td>
+        <td>
+          <div class="list-avatar">${initials}</div>
+          ${u.name || 'Unknown'} ${u.email === currentUserEmail ? '<span style="opacity: 0.6; font-size: 0.8rem;">(You)</span>' : ''}
+        </td>
+        <td style="font-weight: bold; color: var(--accent-primary);">${u.sp || 0} SP</td>
+      `;
+      leaderboardTableBody.appendChild(tr);
+    });
     
-    renderSPGraph();
+    if (!currentAdminEmail) {
+      renderSPGraph();
+    }
   }
 
   function renderSPGraph() {
@@ -927,60 +1157,149 @@ document.addEventListener('DOMContentLoaded', () => {
     spGraphContainer.innerHTML = '';
     
     const user = users.find(u => u.email === currentUserEmail);
-    if (!user || !user.spHistory || user.spHistory.length === 0) {
-      spGraphContainer.innerHTML = '<p style="color: var(--text-secondary); width: 100%; text-align: center; margin-bottom: 2rem;">No SP activity found.</p>';
-      return;
-    }
+    if (!user) return;
+    
+    spGraphContainer.style.display = 'block';
+    spGraphContainer.style.overflowX = 'auto';
+    spGraphContainer.style.paddingBottom = '5px';
     
     // Aggregate by Date
     const dailySP: Record<string, number> = {};
-    user.spHistory.forEach(entry => {
-      if (!dailySP[entry.date]) dailySP[entry.date] = 0;
-      dailySP[entry.date] += entry.amount;
+    if (user.spHistory) {
+      user.spHistory.forEach(entry => {
+        if (!dailySP[entry.date]) dailySP[entry.date] = 0;
+        dailySP[entry.date] += entry.amount;
+      });
+    }
+    
+    const now = new Date();
+    let startDate = new Date(user.date);
+    if (isNaN(startDate.getTime())) {
+      startDate = new Date();
+      startDate.setDate(now.getDate() - 14);
+    }
+    
+    // Find the absolute earliest date in history to calculate running total properly
+    let earliestDate = new Date(startDate);
+    if (user.spHistory && user.spHistory.length > 0) {
+      // Find min date
+      user.spHistory.forEach(entry => {
+        const ed = new Date(entry.date);
+        if (!isNaN(ed.getTime()) && ed < earliestDate) {
+          earliestDate = ed;
+        }
+      });
+    }
+    
+    // Build cumulative SP up to now
+    const cumulativeSP: Record<string, number> = {};
+    let runningTotal = 0;
+    for (let d = new Date(earliestDate); d <= now; d.setDate(d.getDate() + 1)) {
+      const dateString = d.toLocaleDateString();
+      if (dailySP[dateString]) {
+        runningTotal += dailySP[dateString];
+      }
+      cumulativeSP[dateString] = runningTotal;
+    }
+
+    // Now figure out the visible window (Max 30 days)
+    const diffTime = Math.abs(now.getTime() - startDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays > 30) {
+      startDate = new Date();
+      startDate.setDate(now.getDate() - 30);
+    }
+    if (diffDays < 7) {
+      startDate = new Date();
+      startDate.setDate(now.getDate() - 7);
+    }
+
+    const timelineDates: { key: string, label: string }[] = [];
+    for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const year = d.getFullYear();
+      timelineDates.push({
+        key: d.toLocaleDateString(),
+        label: `${day}/${month}/${year}`
+      });
+    }
+    
+    const minWidth = timelineDates.length * 60; // 60px per day
+    
+    spGraphContainer.innerHTML = `
+      <div id="sp-graph-wrapper" style="min-width: ${minWidth}px; padding-top: 30px;">
+        <div id="sp-graph-bars" style="display: flex; height: 120px; align-items: flex-end; width: 100%; border-bottom: 2px solid rgba(255,255,255,0.1); gap: 4px;"></div>
+        <div id="sp-graph-labels" style="display: flex; width: 100%; height: 20px; margin-top: 5px; gap: 4px;"></div>
+      </div>
+    `;
+    
+    const barsContainer = document.getElementById('sp-graph-bars');
+    const labelsContainer = document.getElementById('sp-graph-labels');
+    if (!barsContainer || !labelsContainer) return;
+    
+    let maxCumValue = 10;
+    timelineDates.forEach(item => {
+      const val = cumulativeSP[item.key] || 0;
+      if (Math.abs(val) > maxCumValue) {
+        maxCumValue = Math.abs(val);
+      }
     });
     
-    const dates = Object.keys(dailySP);
-    const recentDates = dates.slice(-7); 
-    
-    let maxAbsValue = 10; 
-    recentDates.forEach(d => {
-      if (Math.abs(dailySP[d]) > maxAbsValue) maxAbsValue = Math.abs(dailySP[d]);
-    });
-    
-    recentDates.forEach(d => {
-      const val = dailySP[d];
-      let typeClass = 'neutral';
-      if (val > 0) typeClass = 'positive';
-      else if (val < 0) typeClass = 'negative';
+    timelineDates.forEach((item, index) => {
+      const cumVal = cumulativeSP[item.key] || 0;
+      const dailyVal = dailySP[item.key] || 0;
       
-      const heightPercent = Math.max(10, Math.floor((Math.abs(val) / maxAbsValue) * 100));
+      let typeClass = 'baseline';
+      if (cumVal > 0) typeClass = 'positive';
+      else if (cumVal < 0) typeClass = 'negative';
       
-      const wrapper = document.createElement('div');
-      wrapper.className = 'graph-bar-wrapper';
+      let heightPercent = 5; // Base level
+      // Show cumulative bar height
+      if (cumVal !== 0) {
+        heightPercent = Math.max(15, Math.floor((Math.abs(cumVal) / maxCumValue) * 100));
+      }
       
       const bar = document.createElement('div');
       bar.className = `graph-bar ${typeClass}`;
       bar.style.height = '0%';
+      bar.style.maxWidth = 'none'; // fill wrapper
+      bar.style.flex = '1';
+      bar.style.borderLeft = '1px solid rgba(255,255,255,0.02)';
+      bar.style.borderRight = '1px solid rgba(0,0,0,0.1)';
+      bar.style.borderRadius = '4px 4px 0 0';
+      bar.style.position = 'relative';
       
+      // Show cumulative SP label on every bar
       const valLabel = document.createElement('div');
       valLabel.className = 'graph-value';
-      valLabel.textContent = val > 0 ? '+' + val : val.toString();
-      
+      valLabel.textContent = `SP: ${cumVal}`;
+      valLabel.style.fontSize = '0.7rem';
+      valLabel.style.whiteSpace = 'nowrap';
       bar.appendChild(valLabel);
+      
+      barsContainer.appendChild(bar);
+      
+      // Horizontal un-slanted label
+      const labelWrapper = document.createElement('div');
+      labelWrapper.style.flex = '1';
+      labelWrapper.style.display = 'flex';
+      labelWrapper.style.justifyContent = 'center';
       
       const dateLabel = document.createElement('div');
       dateLabel.className = 'graph-label';
-      dateLabel.textContent = d.split('/')[0] + '/' + d.split('/')[1]; // Shorten date
+      dateLabel.textContent = item.label;
+      dateLabel.style.whiteSpace = 'nowrap';
+      dateLabel.style.fontSize = '0.65rem';
+      dateLabel.style.marginTop = '0';
       
-      wrapper.appendChild(bar);
-      wrapper.appendChild(dateLabel);
-      
-      spGraphContainer.appendChild(wrapper);
+      labelWrapper.appendChild(dateLabel);
+      labelsContainer.appendChild(labelWrapper);
       
       // Animate
       setTimeout(() => {
         bar.style.height = `${heightPercent}%`;
-      }, 50);
+      }, 30 * index);
     });
   }
 
@@ -999,6 +1318,9 @@ document.addEventListener('DOMContentLoaded', () => {
     navCommunityQueries.style.display = 'flex';
     navSpHistory.style.display = 'flex';
     if (navLeaderboard) navLeaderboard.style.display = 'flex';
+    const navAttendance = document.getElementById('nav-attendance');
+    if (navAttendance) navAttendance.style.display = 'flex';
+    
     document.getElementById('popular-faq-list-container').style.display = 'block';
     document.getElementById('popular-faq-login-msg').style.display = 'none';
     
@@ -1007,6 +1329,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (user) {
       currentUserName = user.name || "Unknown";
       user.lastSignIn = new Date().toLocaleString();
+      
+      const todayStr = new Date().toLocaleDateString();
+      if (!user.attendance) user.attendance = [];
+      if (!user.attendance.includes(todayStr)) {
+        user.attendance.push(todayStr);
+      }
+      
       if (user.sp === undefined) user.sp = 0;
       userSpCount.textContent = user.sp;
       saveState();
@@ -1016,6 +1345,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCommunityQueries();
     renderSpHistory();
     renderLeaderboard();
+    renderAttendanceTracker();
 
     // Save session to localStorage
     localStorage.setItem('faq_session_email', email);
@@ -1041,6 +1371,9 @@ document.addEventListener('DOMContentLoaded', () => {
     navCommunityQueries.style.display = 'none';
     navSpHistory.style.display = 'none';
     if (navLeaderboard) navLeaderboard.style.display = 'none';
+    const navAttendance = document.getElementById('nav-attendance');
+    if (navAttendance) navAttendance.style.display = 'none';
+    
     document.getElementById('popular-faq-list-container').style.display = 'none';
     document.getElementById('popular-faq-login-msg').style.display = 'block';
     
@@ -1072,7 +1405,8 @@ document.addEventListener('DOMContentLoaded', () => {
       signupError.style.display = 'block';
     } else {
       const currentDateTime = new Date().toLocaleString();
-      users.push({ name, email, password, date: currentDateTime, status: 'Active', lastSignIn: 'Never', sp: 0, spHistory: [] });
+      const todayStr = new Date().toLocaleDateString();
+      users.push({ name, email, password, date: currentDateTime, status: 'Active', lastSignIn: 'Never', sp: 0, spHistory: [], attendance: [todayStr] });
       saveState();
       signupError.style.display = 'none';
       signupSuccess.style.display = 'block';
