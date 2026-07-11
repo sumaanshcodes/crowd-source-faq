@@ -13,10 +13,15 @@ interface User {
   password?: string;
   date: string;
   status: string;
-  lastSignIn: string;
   sp?: number;
   spHistory?: SPHistoryEntry[];
   attendance?: string[];
+  isRemoved?: boolean;
+  removalReason?: string;
+  removalDate?: string;
+  appealsUsed?: number;
+  appealMessage?: string;
+  appealStatus?: 'none' | 'pending' | 'rejected' | 'accepted';
 }
 
 interface Admin {
@@ -50,15 +55,40 @@ interface SavedFaq {
 
 // LocalStorage State (Clean slate)
 let users: User[] = JSON.parse(localStorage.getItem('faq_users_v2') || '[]');
-
 let admins: Admin[] = JSON.parse(localStorage.getItem('faq_admins_v2') || '[]');
-
 let unresolvedQueries: Query[] = JSON.parse(localStorage.getItem('faq_queries_v2') || '[]');
-
 let resolvedQueries: ResolvedQuery[] = JSON.parse(localStorage.getItem('faq_resolved_v2') || '[]');
+
+// Legacy Data Migration (Recover from faq_app_data if v2 is empty)
+const legacyData = localStorage.getItem('faq_app_data');
+if (legacyData) {
+  try {
+    const parsed = JSON.parse(legacyData);
+    let migrated = false;
+    if (users.length === 0 && parsed.users) { users = parsed.users; migrated = true; }
+    if (admins.length === 0 && parsed.admins) { admins = parsed.admins; migrated = true; }
+    if (unresolvedQueries.length === 0 && parsed.queries) { unresolvedQueries = parsed.queries; migrated = true; }
+    
+    if (migrated) {
+      localStorage.setItem('faq_users_v2', JSON.stringify(users));
+      localStorage.setItem('faq_admins_v2', JSON.stringify(admins));
+      localStorage.setItem('faq_queries_v2', JSON.stringify(unresolvedQueries));
+    }
+  } catch (e) {
+    console.error("Failed to migrate legacy data", e);
+  }
+}
 
 function getSavedFaqs(): SavedFaq[] {
   return JSON.parse(localStorage.getItem('faq_saved_v2') || '[]');
+}
+
+let faqViews: Record<string, number> = JSON.parse(localStorage.getItem('faq_views_v2') || '{}');
+
+function incrementFaqView(question: string) {
+  if (!faqViews[question]) faqViews[question] = 0;
+  faqViews[question]++;
+  localStorage.setItem('faq_views_v2', JSON.stringify(faqViews));
 }
 
 function setSavedFaqs(faqs: SavedFaq[]) {
@@ -408,6 +438,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
           }
           itemDiv.classList.toggle('active');
+          if (itemDiv.classList.contains('active')) {
+            incrementFaqView(qObj.q);
+          }
         });
 
         itemDiv.appendChild(btn);
@@ -1303,6 +1336,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function renderDynamicPopularFaqs() {
+    const popularContainer = document.getElementById('popular-faq-list-container');
+    if (!popularContainer) return;
+
+    const allFaqs: { q: string, a: string }[] = [];
+    faqData.forEach(cat => {
+      cat.questions.forEach(q => allFaqs.push(q));
+    });
+
+    allFaqs.sort((a, b) => (faqViews[b.q] || 0) - (faqViews[a.q] || 0));
+    const topFaqs = allFaqs.slice(0, 15);
+
+    popularContainer.innerHTML = '';
+    topFaqs.forEach(faq => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'faq-item';
+      
+      const btn = document.createElement('button');
+      btn.className = 'faq-question';
+      btn.innerHTML = `<span>${faq.q}</span> <span class="faq-icon">▼</span>`;
+      
+      const ansDiv = document.createElement('div');
+      ansDiv.className = 'faq-answer';
+      ansDiv.innerHTML = `<div class="faq-answer-inner">${faq.a}</div>`;
+      
+      btn.addEventListener('click', () => {
+        itemDiv.classList.toggle('active');
+        if (itemDiv.classList.contains('active')) {
+          incrementFaqView(faq.q);
+        }
+      });
+      
+      itemDiv.appendChild(btn);
+      itemDiv.appendChild(ansDiv);
+      popularContainer.appendChild(itemDiv);
+    });
+  }
+
   function loginUser(email) {
     currentUserEmail = email;
     loginModal.classList.remove('active');
@@ -1323,6 +1394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('popular-faq-list-container').style.display = 'block';
     document.getElementById('popular-faq-login-msg').style.display = 'none';
+    renderDynamicPopularFaqs();
     
     // Update last sign in and SP
     const user = users.find(u => u.email === email);
@@ -1420,6 +1492,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  function handleRemovedUserLogin(user: any) {
+    const removalDate = new Date(user.removalDate || Date.now());
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - removalDate.getTime()) / (1000 * 3600 * 24));
+    const daysLeft = 5 - diffDays;
+    
+    if (daysLeft <= 0 || ((user.appealsUsed || 0) >= 3 && user.appealStatus === 'rejected')) {
+      // Delete user completely
+      const index = users.findIndex(u => u.email === user.email);
+      if (index > -1) {
+        users.splice(index, 1);
+        saveState();
+      }
+      alert("Account permanently deleted due to expired appeal period or exhausted appeals.");
+      return;
+    }
+    
+    // Show Portal
+    const portal = document.getElementById('appeal-portal-modal');
+    const reasonText = document.getElementById('appeal-portal-reason');
+    const daysLeftSpan = document.getElementById('appeal-days-left');
+    const countLeftSpan = document.getElementById('appeal-count-left');
+    
+    const formSection = document.getElementById('appeal-form-section');
+    const pendingSection = document.getElementById('appeal-pending-section');
+    const rejectedSection = document.getElementById('appeal-rejected-section');
+    
+    if (reasonText) reasonText.textContent = user.removalReason || "No reason provided.";
+    if (daysLeftSpan) daysLeftSpan.textContent = daysLeft.toString();
+    if (countLeftSpan) countLeftSpan.textContent = (3 - (user.appealsUsed || 0)).toString();
+    
+    if (formSection && pendingSection && rejectedSection) {
+      formSection.style.display = 'none';
+      pendingSection.style.display = 'none';
+      rejectedSection.style.display = 'none';
+      
+      if (user.appealStatus === 'pending') {
+        pendingSection.style.display = 'block';
+      } else if (user.appealStatus === 'rejected') {
+        rejectedSection.style.display = 'block';
+      } else {
+        formSection.style.display = 'block';
+      }
+    }
+    
+    if (portal) {
+      portal.style.display = 'flex';
+      portal.classList.add('active');
+    }
+    
+    // Attach current user email to window for handlers
+    (window as any).currentAppealEmail = user.email;
+  }
+
   signinForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('signin-email').value;
@@ -1427,6 +1553,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const user = users.find(u => u.email === email && u.password === password);
     if (user) {
+      if (user.isRemoved) {
+        handleRemovedUserLogin(user);
+        return;
+      }
       loginError.style.display = 'none';
       loginUser(email);
     } else {
@@ -1503,19 +1633,174 @@ document.addEventListener('DOMContentLoaded', () => {
     return text;
   }
 
+  // User Removal and Appeal Logic
+  const removeUserModal = document.getElementById('remove-user-modal');
+  const reviewAppealModal = document.getElementById('review-appeal-modal');
+  let currentActionEmail = '';
+
+  function openRemoveUserModal(email: string) {
+    const user = users.find(u => u.email === email);
+    if (!user) return;
+    currentActionEmail = email;
+    const info = document.getElementById('remove-user-info');
+    if (info) info.textContent = `${user.name} (${user.email})`;
+    const reasonInput = document.getElementById('remove-user-reason') as HTMLTextAreaElement;
+    if (reasonInput) reasonInput.value = '';
+    if (removeUserModal) removeUserModal.classList.add('active');
+  }
+
+  function openReviewAppealModal(email: string) {
+    const user = users.find(u => u.email === email);
+    if (!user) return;
+    currentActionEmail = email;
+    const info = document.getElementById('review-appeal-user');
+    const reason = document.getElementById('review-appeal-reason-text');
+    const message = document.getElementById('review-appeal-message');
+    
+    if (info) info.textContent = `${user.name} (${user.email})`;
+    if (reason) reason.textContent = user.removalReason || 'N/A';
+    if (message) message.textContent = user.appealMessage || 'No appeal message.';
+    
+    if (reviewAppealModal) reviewAppealModal.classList.add('active');
+  }
+
+  // Attach Admin Modal Listeners
+  const removeUserSubmit = document.getElementById('remove-user-submit');
+  const removeUserCancel = document.getElementById('remove-user-cancel');
+  
+  if (removeUserSubmit) {
+    removeUserSubmit.addEventListener('click', () => {
+      const reasonInput = document.getElementById('remove-user-reason') as HTMLTextAreaElement;
+      const reason = reasonInput.value.trim();
+      if (!reason) {
+        alert('Please provide a reason for removal.');
+        return;
+      }
+      const user = users.find(u => u.email === currentActionEmail);
+      if (user) {
+        user.isRemoved = true;
+        user.removalReason = reason;
+        user.removalDate = new Date().toLocaleString();
+        user.appealsUsed = 0;
+        user.appealStatus = 'none';
+        saveState();
+        renderAdminUsersTable();
+      }
+      if (removeUserModal) removeUserModal.classList.remove('active');
+    });
+  }
+  
+  if (removeUserCancel) {
+    removeUserCancel.addEventListener('click', () => {
+      if (removeUserModal) removeUserModal.classList.remove('active');
+    });
+  }
+
+  const reviewAccept = document.getElementById('review-appeal-accept');
+  const reviewReject = document.getElementById('review-appeal-reject');
+  const reviewCancel = document.getElementById('review-appeal-cancel');
+
+  if (reviewAccept) {
+    reviewAccept.addEventListener('click', () => {
+      const user = users.find(u => u.email === currentActionEmail);
+      if (user) {
+        user.isRemoved = false;
+        user.appealStatus = 'accepted';
+        saveState();
+        renderAdminUsersTable();
+      }
+      if (reviewAppealModal) reviewAppealModal.classList.remove('active');
+    });
+  }
+
+  if (reviewReject) {
+    reviewReject.addEventListener('click', () => {
+      const user = users.find(u => u.email === currentActionEmail);
+      if (user) {
+        user.appealStatus = 'rejected';
+        saveState();
+        renderAdminUsersTable();
+      }
+      if (reviewAppealModal) reviewAppealModal.classList.remove('active');
+    });
+  }
+  
+  if (reviewCancel) {
+    reviewCancel.addEventListener('click', () => {
+      if (reviewAppealModal) reviewAppealModal.classList.remove('active');
+    });
+  }
+  
+  // Attach User Appeal Portal Listeners
+  const submitAppealBtn = document.getElementById('submit-appeal-btn');
+  const closeAppealBtn = document.getElementById('close-appeal-portal');
+  const closePendingBtn = document.getElementById('close-appeal-portal-pending');
+  const closeRejectedBtn = document.getElementById('close-appeal-portal-rejected');
+  const appealTryAgainBtn = document.getElementById('appeal-try-again-btn');
+  
+  const portalModal = document.getElementById('appeal-portal-modal');
+
+  if (submitAppealBtn) {
+    submitAppealBtn.addEventListener('click', () => {
+      const input = document.getElementById('appeal-message-input') as HTMLTextAreaElement;
+      const msg = input.value.trim();
+      if (!msg) {
+        alert('Please write your genuine reason before submitting.');
+        return;
+      }
+      const email = (window as any).currentAppealEmail;
+      const user = users.find(u => u.email === email);
+      if (user) {
+        user.appealMessage = msg;
+        user.appealStatus = 'pending';
+        user.appealsUsed = (user.appealsUsed || 0) + 1;
+        saveState();
+        handleRemovedUserLogin(user); // Re-render portal to show pending
+      }
+    });
+  }
+
+  if (appealTryAgainBtn) {
+    appealTryAgainBtn.addEventListener('click', () => {
+      const email = (window as any).currentAppealEmail;
+      const user = users.find(u => u.email === email);
+      if (user) {
+        if ((user.appealsUsed || 0) >= 3) {
+          alert('You have exhausted all your appeals.');
+          return;
+        }
+        user.appealStatus = 'none';
+        saveState();
+        handleRemovedUserLogin(user); // Re-render portal to show form again
+      }
+    });
+  }
+
+  function closePortal() {
+    if (portalModal) {
+      portalModal.classList.remove('active');
+      setTimeout(() => { portalModal.style.display = 'none'; }, 300);
+    }
+  }
+
+  if (closeAppealBtn) closeAppealBtn.addEventListener('click', closePortal);
+  if (closePendingBtn) closePendingBtn.addEventListener('click', closePortal);
+  if (closeRejectedBtn) closeRejectedBtn.addEventListener('click', closePortal);
+
   function renderAdminUsersTable() {
     adminUsersTableBody.innerHTML = '';
     users.forEach((u, uIndex) => {
       const tr = document.createElement('tr');
-      const badgeClass = u.status === 'Active' ? 'status-active' : '';
+      const badgeClass = u.status === 'Active' && !u.isRemoved ? 'status-active' : (u.isRemoved ? '' : '');
+      const statusText = u.isRemoved ? 'Removed' : u.status;
       tr.innerHTML = `
         <td>${u.name || 'Unknown'}</td>
         <td>${u.email}</td>
         <td>${u.sp !== undefined ? u.sp : 0} SP</td>
         <td></td>
-        <td><span class="status-badge ${badgeClass}">${u.status}</span></td>
+        <td><span class="status-badge ${badgeClass}" ${u.isRemoved ? 'style="background: var(--error-color);"' : ''}>${statusText}</span></td>
         <td>${u.date}</td>
-        <td>${u.lastSignIn || 'Never'}</td>
+        <td></td>
       `;
       
       // Add Manage SP button in the 4th column
@@ -1528,6 +1813,42 @@ document.addEventListener('DOMContentLoaded', () => {
         openSpEditModal(uIndex);
       });
       spTd.appendChild(editSpBtn);
+      
+      const actionsTd = tr.querySelectorAll('td')[6];
+      const actionsDiv = document.createElement('div');
+      actionsDiv.style.display = 'flex';
+      actionsDiv.style.gap = '0.5rem';
+      actionsDiv.style.alignItems = 'center';
+      
+      if (!u.isRemoved) {
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn';
+        removeBtn.style.cssText = 'padding: 0.3rem 0.6rem; font-size: 0.8rem; background-color: var(--error-color); color: white; border: none;';
+        removeBtn.textContent = 'Remove User';
+        removeBtn.onclick = () => {
+          openRemoveUserModal(u.email);
+        };
+        actionsDiv.appendChild(removeBtn);
+      } else if (u.appealStatus === 'pending') {
+        const reviewBtn = document.createElement('button');
+        reviewBtn.className = 'btn primary-btn';
+        reviewBtn.style.cssText = 'padding: 0.3rem 0.6rem; font-size: 0.8rem; background-color: var(--color-3);';
+        reviewBtn.textContent = 'Review Appeal';
+        reviewBtn.onclick = () => {
+          openReviewAppealModal(u.email);
+        };
+        actionsDiv.appendChild(reviewBtn);
+      } else {
+        const infoSpan = document.createElement('span');
+        infoSpan.style.cssText = 'font-size: 0.8rem; color: var(--text-secondary);';
+        if (u.appealStatus === 'rejected') {
+          infoSpan.textContent = 'Appeal Rejected';
+        } else {
+          infoSpan.textContent = 'Removed (No Appeal)';
+        }
+        actionsDiv.appendChild(infoSpan);
+      }
+      actionsTd.appendChild(actionsDiv);
       
       adminUsersTableBody.appendChild(tr);
     });

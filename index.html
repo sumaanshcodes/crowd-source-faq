@@ -82,40 +82,7 @@
               <div id="popular-faq-login-msg" style="padding: 2rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 1rem;">
                 <p>Please <a href="#" onclick="document.getElementById('login-modal-btn').click(); return false;" style="color: var(--accent-primary);">sign in</a> to view the Popular FAQs.</p>
               </div>
-              <div id="popular-faq-list-container" class="faq-container" style="text-align: left; display: none;">
-                <div class="faq-item">
-                  <button class="faq-question" onclick="this.parentElement.classList.toggle('active')">
-                    <span>I have uploaded my NOC and it got validated also but not got the final offer letter</span>
-                    <span class="faq-icon">▼</span>
-                  </button>
-                  <div class="faq-answer">
-                    <div class="faq-answer-inner">
-                      <p>Your NOC might have got auto validated , so you need not worry as when it gets reviewed once by the team then you will get your final offer letter, until that please continue your internship, Thank You.</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="faq-item">
-                  <button class="faq-question" onclick="this.parentElement.classList.toggle('active')">
-                    <span>I have been excused from the internship due to low attendance , as i had an urgent emergency.</span>
-                    <span class="faq-icon">▼</span>
-                  </button>
-                  <div class="faq-answer">
-                    <div class="faq-answer-inner">
-                      <p>If you have been excused and you had a genuine reason then you can appeal it on the samagama dashboard that will be visible to you, you can appeal there, Team will review it and on basis of it you will be informed, what can be done, Thank You.</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="faq-item">
-                  <button class="faq-question" onclick="this.parentElement.classList.toggle('active')">
-                    <span>My team leader got excused the from this cohort , what should the team do now to continue.</span>
-                    <span class="faq-icon">▼</span>
-                  </button>
-                  <div class="faq-answer">
-                    <div class="faq-answer-inner">
-                      <p>If your team leader got excused then you need not worry in some time you wil get an option to select a team leader from the team members of your team , So in this way you can continue, Thank You.</p>
-                    </div>
-                  </div>
-                </div>
+              <div id="popular-faq-list-container" class="faq-container" style="text-align: left; display: none; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
               </div>
             </div>
 
@@ -399,7 +366,7 @@
                       <th>Manage SP</th>
                       <th>Status</th>
                       <th>Joined Date</th>
-                      <th>Last Sign In</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody id="admin-users-table-body">
@@ -652,6 +619,80 @@
         <button id="reject-submit-btn" class="btn primary-btn flex-1" style="background-color: var(--error-color);">Confirm Reject</button>
         <button id="reject-cancel-btn" class="btn secondary-btn flex-1">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Remove User Modal -->
+  <div id="remove-user-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 550px; padding: 2rem;">
+      <h2 class="color-heading-2" style="color: var(--error-color);">Remove User</h2>
+      <p id="remove-user-info" style="font-weight: 500; margin-bottom: 1rem;"></p>
+      
+      <div class="input-group" style="margin-bottom: 0.75rem;">
+        <label>Reason for Removal</label>
+        <textarea id="remove-user-reason" rows="4" placeholder="e.g. Violation of community guidelines" style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--bg-tertiary); color: var(--text-primary); resize: vertical;"></textarea>
+      </div>
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button id="remove-user-submit" class="btn primary-btn flex-1" style="background-color: var(--error-color);">Remove User</button>
+        <button id="remove-user-cancel" class="btn flex-1">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review Appeal Modal -->
+  <div id="review-appeal-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px; padding: 2rem;">
+      <h2 class="color-heading-2">Review User Appeal</h2>
+      <p id="review-appeal-user" style="font-weight: 500; margin-bottom: 0.5rem;"></p>
+      <p style="font-size: 0.85rem; opacity: 0.7; margin-bottom: 1rem;">Removal Reason: <span id="review-appeal-reason-text"></span></p>
+      
+      <div class="input-group" style="margin-bottom: 1rem;">
+        <label>User's Appeal Message:</label>
+        <div id="review-appeal-message" style="padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px; font-style: italic;"></div>
+      </div>
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button id="review-appeal-accept" class="btn primary-btn flex-1" style="background-color: var(--color-3);">Accept & Restore</button>
+        <button id="review-appeal-reject" class="btn primary-btn flex-1" style="background-color: var(--error-color);">Reject Appeal</button>
+        <button id="review-appeal-cancel" class="btn flex-1">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Appeal Portal Overlay for Removed Users -->
+  <div id="appeal-portal-modal" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 10000; background: rgba(0,0,0,0.9);">
+    <div class="modal-content" style="max-width: 550px; padding: 2.5rem; text-align: center; border: 1px solid var(--error-color);">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">⛔</div>
+      <h2 class="color-heading-2" style="color: var(--error-color);">Account Suspended</h2>
+      <p style="margin-top: 1rem;">You have been removed from the platform.</p>
+      <div style="background: rgba(239, 68, 68, 0.1); padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
+        <p style="font-weight: 600; font-size: 0.9rem; color: #ef4444; text-transform: uppercase; margin-bottom: 0.5rem;">Reason given by Admin</p>
+        <p id="appeal-portal-reason" style="font-style: italic;"></p>
+      </div>
+      
+      <div id="appeal-form-section">
+        <p style="margin-bottom: 1rem; font-size: 0.9rem;">You have <span id="appeal-days-left" style="font-weight: bold; color: var(--color-3);">5</span> days remaining to submit an appeal. (<span id="appeal-count-left" style="font-weight: bold;">3</span> appeals left)</p>
+        <textarea id="appeal-message-input" rows="4" placeholder="Explain your genuine reason here..." style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--bg-tertiary); color: var(--text-primary); margin-bottom: 1rem;"></textarea>
+        <div style="display: flex; gap: 1rem;">
+          <button id="submit-appeal-btn" class="btn primary-btn flex-1">Submit Appeal</button>
+          <button id="close-appeal-portal" class="btn flex-1">Close</button>
+        </div>
+      </div>
+
+      <div id="appeal-pending-section" style="display: none;">
+        <div style="background: rgba(245, 158, 11, 0.1); padding: 1rem; border-radius: 8px; margin: 1.5rem 0; border: 1px solid rgba(245, 158, 11, 0.5);">
+          <p style="color: #f59e0b; font-weight: 600;">Your appeal is currently under review.</p>
+        </div>
+        <button id="close-appeal-portal-pending" class="btn mt-1">Close</button>
+      </div>
+
+      <div id="appeal-rejected-section" style="display: none;">
+        <div style="background: rgba(239, 68, 68, 0.1); padding: 1rem; border-radius: 8px; margin: 1.5rem 0; border: 1px solid rgba(239, 68, 68, 0.5);">
+          <p style="color: #ef4444; font-weight: 600;">Your appeal has been rejected.</p>
+        </div>
+        <button id="appeal-try-again-btn" class="btn primary-btn mt-1">Submit Another Appeal</button>
+        <button id="close-appeal-portal-rejected" class="btn mt-1">Close</button>
+      </div>
+
     </div>
   </div>
 
